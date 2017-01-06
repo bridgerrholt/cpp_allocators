@@ -1,7 +1,8 @@
 #include <iostream>
 #include <memory>
 
-#include "bridgerrholt/allocator_test/construct.h"
+#include "bridgerrholt/allocator_test/allocator_wrapper.h"
+#include "bridgerrholt/allocator_test/allocator_singleton.h"
 #include "bridgerrholt/allocator_test/allocators/malloc_allocator.h"
 
 class Base
@@ -79,15 +80,9 @@ int main() {
 
 
 	using namespace bridgerrholt::allocator_test;
-	using AllocatorType = AllocatorWrapper<MallocAllocator>;
+	using AllocatorType = AllocatorSingleton<MallocAllocator>;
 
-	AllocatorType allocator {};
-
-	auto block = allocator.construct<int>(10);
-
-	std::cout << block.getPtr() << ": " << *block.getPtr() << '\n';
-
-	allocator.destruct(block);
+	auto block = AllocatorType::get().construct<A>();
 
 
 	return 0;

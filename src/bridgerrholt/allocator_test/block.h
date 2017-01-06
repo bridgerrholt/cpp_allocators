@@ -25,6 +25,23 @@ class Block
 };
 
 
+template <class T>
+class BasicBlock : public Block
+{
+	public:
+		using Pointer      = T       *;
+		using ConstPointer = T const *;
+
+		BasicBlock(GenericPtr ptr, SizeType size) : Block {ptr, size} {}
+
+		ConstPointer getPtr() const {
+			return reinterpret_cast<ConstPointer>(this->Block::getPtr());
+		}
+
+		Pointer getPtr() { return reinterpret_cast<Pointer>(Block::getPtr()); }
+
+};
+
 
 	}
 }
