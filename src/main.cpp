@@ -1,6 +1,9 @@
 #include <iostream>
 #include <memory>
 
+#include "bridgerrholt/allocator_test/construct.h"
+#include "bridgerrholt/allocator_test/allocators/malloc_allocator.h"
+
 class Base
 {
 	public:
@@ -49,7 +52,7 @@ class B : public Base
 
 
 int main() {
-	constexpr std::size_t arrSize {5000};
+	/*constexpr std::size_t arrSize {5000};
 	char arr [arrSize];
 	for (std::size_t i = 0; i < arrSize; ++i)
 		arr[i] = 0;
@@ -72,7 +75,19 @@ int main() {
 
 
 
-	ptr->~Type();
+	ptr->~Base();*/
+
+
+	using namespace bridgerrholt::allocator_test;
+	using AllocatorType = AllocatorWrapper<MallocAllocator>;
+
+	AllocatorType allocator {};
+
+	auto block = allocator.construct<int>(10);
+
+	std::cout << block.getPtr() << ": " << *block.getPtr() << '\n';
+
+	allocator.destruct(block);
 
 
 	return 0;
