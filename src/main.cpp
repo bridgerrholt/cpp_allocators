@@ -84,6 +84,10 @@ int main() {
 
 	auto block = AllocatorType::get().construct<A>();
 
+	SmartBlockSingleton<MallocAllocator, A> smartBlock {block};
+
+	auto block2 = makeBlock<AllocatorType &, SmartBlockSingleton<MallocAllocator, Base>, A>(AllocatorType::get());
+
 
 	return 0;
 }
