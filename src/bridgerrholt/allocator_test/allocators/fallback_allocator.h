@@ -15,8 +15,8 @@ class FallbackAllocator : private Primary,
 	public:
 		FallbackAllocator() {}
 
-		Block allocate(SizeType size) {
-			Block toReturn {Primary::allocate(size)};
+		RawBlock allocate(SizeType size) {
+			RawBlock toReturn {Primary::allocate(size)};
 
 			if (toReturn.isNull())
 				toReturn = Fallback::allocate(size);
@@ -24,7 +24,7 @@ class FallbackAllocator : private Primary,
 			return toReturn;
 		}
 
-		void deallocate(Block block) {
+		void deallocate(RawBlock block) {
 			if (Primary::owns(block))
 				Primary::deallocate(block);
 
@@ -32,7 +32,7 @@ class FallbackAllocator : private Primary,
 				Fallback::deallocate(block);
 		}
 
-		bool owns(Block block) {
+		bool owns(RawBlock block) {
 			return (Primary::owns(block) || Fallback::owns(block));
 		}
 };

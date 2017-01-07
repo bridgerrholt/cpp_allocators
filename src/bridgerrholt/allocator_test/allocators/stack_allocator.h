@@ -14,7 +14,7 @@ class StackAllocator
 	public:
 		StackAllocator() : back_ {array_} {}
 
-		Block allocate(SizeType size) {
+		RawBlock allocate(SizeType size) {
 
 		}
 

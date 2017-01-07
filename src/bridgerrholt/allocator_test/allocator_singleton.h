@@ -31,7 +31,7 @@ class SmartBlockSingleton : public BasicBlock<T>
 {
 	public:
 		SmartBlockSingleton(GenericPtr ptr, SizeType size) : BasicBlock<T>(ptr, size) {}
-		SmartBlockSingleton(Block block) :
+		SmartBlockSingleton(RawBlock block) :
 			BasicBlock<T>(block.getPtr(), block.getSize()) {}
 
 		~SmartBlockSingleton() {

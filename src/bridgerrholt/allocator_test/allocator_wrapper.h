@@ -17,7 +17,7 @@ class AllocatorWrapper : private Allocator
 
 		template <class T, class ... ArgTypes>
 		BasicBlock<T> construct(ArgTypes ... args) {
-			Block block = Allocator::allocate(sizeof(T));
+			RawBlock block = Allocator::allocate(sizeof(T));
 			T * ptr = new (block.getPtr()) T {std::forward<ArgTypes>(args)...};
 			return { block.getPtr(), block.getSize() };
 		}

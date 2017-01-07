@@ -14,13 +14,13 @@ class MallocAllocator
 	public:
 		MallocAllocator() {}
 
-		Block allocate(SizeType size) {
-			Block toReturn {malloc(size), size};
+		RawBlock allocate(SizeType size) {
+			RawBlock toReturn {malloc(size), size};
 
 			return toReturn;
 		}
 
-		void deallocate(Block block) {
+		void deallocate(RawBlock block) {
 			free(block.getPtr());
 		}
 };

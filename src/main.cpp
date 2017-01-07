@@ -1,9 +1,11 @@
 #include <iostream>
 #include <memory>
 
-#include "bridgerrholt/allocator_test/allocator_wrapper.h"
+#include <boost/pool/simple_segregated_storage.hpp>
+
+/*#include "bridgerrholt/allocator_test/allocator_wrapper.h"
 #include "bridgerrholt/allocator_test/allocator_singleton.h"
-#include "bridgerrholt/allocator_test/allocators/malloc_allocator.h"
+#include "bridgerrholt/allocator_test/allocators/malloc_allocator.h"*/
 
 class Base
 {
@@ -79,14 +81,28 @@ int main() {
 	ptr->~Base();*/
 
 
-	using namespace bridgerrholt::allocator_test;
+	/*using namespace bridgerrholt::allocator_test;
 	using AllocatorType = AllocatorSingleton<MallocAllocator>;
 
 	auto block = AllocatorType::get().construct<A>();
 
 	SmartBlockSingleton<MallocAllocator, A> smartBlock {block};
 
-	auto block2 = makeBlock<AllocatorType &, SmartBlockSingleton<MallocAllocator, Base>, A>(AllocatorType::get());
+	auto block2 = makeBlock<AllocatorType &, SmartBlockSingleton<MallocAllocator, Base>, A>(AllocatorType::get());*/
+
+
+	boost::simple_segregated_storage<std::size_t> storage;
+	char v [1024];
+	storage.add_block(v, 1024, 256);
+
+	int *i = static_cast<int*>(storage.malloc());
+	*i = 1;
+
+	int *j = static_cast<int*>(storage.malloc_n(1, 512));
+	j[10] = 2;
+
+	storage.free(i);
+	storage.free_n(j, 1, 512);
 
 
 	return 0;

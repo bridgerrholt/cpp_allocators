@@ -8,10 +8,10 @@
 namespace bridgerrholt {
 	namespace allocator_test {
 
-class Block
+class RawBlock
 {
 	public:
-		Block(GenericPtr ptr, SizeType size);
+		RawBlock(GenericPtr ptr, SizeType size);
 
 		bool isNull() const { return (ptr_ == nullptr); }
 
@@ -28,27 +28,27 @@ class Block
 
 
 template <class T>
-class BasicBlock : public Block
+class BasicBlock : public RawBlock
 {
 	public:
 		using Type         = T;
 		using Pointer      = Type       *;
 		using ConstPointer = Type const *;
 
-		BasicBlock(GenericPtr ptr, SizeType size) : Block {ptr, size} {}
-		BasicBlock(Pointer    ptr, SizeType size) : Block { reinterpret_cast<GenericPtr>(ptr), size} {}
+		BasicBlock(GenericPtr ptr, SizeType size) : RawBlock {ptr, size} {}
+		BasicBlock(Pointer    ptr, SizeType size) : RawBlock { reinterpret_cast<GenericPtr>(ptr), size} {}
 
 		template <class C>
 		BasicBlock(BasicBlock<C> block) :
-			Block {block.Block::getPtr(), block.getSize()} {
+			RawBlock {block.RawBlock::getPtr(), block.getSize()} {
 			static_assert(std::is_base_of<Type, C>(), "Cannot convert to non-base");
 		}
 
 		ConstPointer getPtr() const {
-			return reinterpret_cast<ConstPointer>(this->Block::getPtr());
+			return reinterpret_cast<ConstPointer>(this->RawBlock::getPtr());
 		}
 
-		Pointer getPtr() { return reinterpret_cast<Pointer>(Block::getPtr()); }
+		Pointer getPtr() { return reinterpret_cast<Pointer>(RawBlock::getPtr()); }
 
 };
 
