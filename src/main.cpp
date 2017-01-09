@@ -1,11 +1,16 @@
 #include <iostream>
 #include <memory>
+#include <array>
 
 #include <boost/pool/simple_segregated_storage.hpp>
 
-/*#include "bridgerrholt/allocator_test/allocator_wrapper.h"
+#include "bridgerrholt/allocator_test/allocator_wrapper.h"
 #include "bridgerrholt/allocator_test/allocator_singleton.h"
-#include "bridgerrholt/allocator_test/allocators/malloc_allocator.h"*/
+#include "bridgerrholt/allocator_test/smart_allocator.h"
+
+#include "bridgerrholt/allocator_test/allocators/malloc_allocator.h"
+#include "bridgerrholt/allocator_test/allocators/bitmapped_block.h"
+
 
 class Base
 {
@@ -64,9 +69,9 @@ int main() {
 
 	using Type = A;
 
-	//reinterpret_cast<Type*>(arr)[0] = Type {};
+	//static_cast<Type*>(arr)[0] = Type {};
 
-	Base * ptr = new (reinterpret_cast<void*>(&arr[0])) Type {};
+	Base * ptr = new (static_cast<void*>(&arr[0])) Type {};
 
 	std::cout << (std::ptrdiff_t)arr % sizeof(Type) << ' ' << sizeof(Type) << '\n';
 
@@ -90,7 +95,7 @@ int main() {
 
 	auto block2 = makeBlock<AllocatorType &, SmartBlockSingleton<MallocAllocator, Base>, A>(AllocatorType::get());*/
 
-
+	/*
 	boost::simple_segregated_storage<std::size_t> storage;
 	char v [1024];
 	storage.add_block(v, 1024, 256);
@@ -102,7 +107,23 @@ int main() {
 	j[10] = 2;
 
 	storage.free(i);
-	storage.free_n(j, 1, 512);
+	storage.free_n(j, 1, 512);*/
+
+
+	using namespace bridgerrholt::allocator_test;
+	using namespace allocators;
+
+	using AllocatorType =
+		SmartAllocator<
+			MemoryEfficientBitmappedBlock<
+				std::array, 1, 1
+			>
+		>;
+
+	AllocatorType allocator {};
+
+	auto i1 = allocator.constructUnique<A>();
+	auto i2 = std::move(i1);
 
 
 	return 0;

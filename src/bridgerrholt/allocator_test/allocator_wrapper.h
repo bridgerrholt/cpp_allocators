@@ -9,7 +9,7 @@ namespace bridgerrholt {
 	namespace allocator_test {
 
 template <class Allocator>
-class AllocatorWrapper : private Allocator
+class AllocatorWrapper : public Allocator
 {
 	public:
 		template <class ... ArgTypes>

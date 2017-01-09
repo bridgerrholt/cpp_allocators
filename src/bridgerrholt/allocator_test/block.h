@@ -11,19 +11,23 @@ namespace bridgerrholt {
 class RawBlock
 {
 	public:
+		friend void swap(RawBlock & first, RawBlock & second);
+
+		/// Default constructor. Initializes ptr as nullptr.
+		RawBlock();
 		RawBlock(GenericPtr ptr, SizeType size);
 
 		bool isNull() const { return (ptr_ == nullptr); }
 
-		ConstGenericPtr getPtr()  const { return ptr_; }
-		GenericPtr      getPtr()        { return ptr_; }
+		void const * getPtr()  const { return ptr_; }
+		void       * getPtr()        { return ptr_; }
 
-		SizeType        getSize() const { return size_; }
+		SizeType     getSize() const { return size_; }
 
 
 	private:
-		GenericPtr  ptr_;
-		SizeType size_;
+		GenericPtr ptr_;
+		SizeType   size_;
 };
 
 
@@ -35,22 +39,39 @@ class BasicBlock : public RawBlock
 		using Pointer      = Type       *;
 		using ConstPointer = Type const *;
 
-		BasicBlock(GenericPtr ptr, SizeType size) : RawBlock {ptr, size} {}
-		BasicBlock(Pointer    ptr, SizeType size) : RawBlock { reinterpret_cast<GenericPtr>(ptr), size} {}
+		friend void swap(BasicBlock & first, BasicBlock & second) {
+			using std::swap;
+
+			swap(*static_cast<RawBlock *>(&first),
+			     *static_cast<RawBlock *>(&second));
+		}
+
+		BasicBlock() {}
+
+		BasicBlock(void *  ptr, SizeType size) :
+			RawBlock {ptr, size} {}
+
+		BasicBlock(Pointer ptr, SizeType size) :
+			RawBlock {static_cast<void *>(ptr), size} {}
 
 		template <class C>
 		BasicBlock(BasicBlock<C> block) :
 			RawBlock {block.RawBlock::getPtr(), block.getSize()} {
-			static_assert(std::is_base_of<Type, C>(), "Cannot convert to non-base");
+			static_assert(std::is_base_of<Type, C>(),
+			              "Cannot convert to non-base");
 		}
 
 		ConstPointer getPtr() const {
-			return reinterpret_cast<ConstPointer>(this->RawBlock::getPtr());
+			return static_cast<ConstPointer>(this->RawBlock::getPtr());
 		}
 
-		Pointer getPtr() { return reinterpret_cast<Pointer>(RawBlock::getPtr()); }
-
+		Pointer getPtr() {
+			return static_cast<Pointer>(RawBlock::getPtr());
+		}
 };
+
+
+
 
 
 	}
