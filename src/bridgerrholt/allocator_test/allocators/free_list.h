@@ -16,6 +16,9 @@ template <class A, SizeType blockSize>
 class FreeList
 {
 	public:
+		static_assert(blockSize >= sizeof(std::uintptr_t),
+		              "Must be able to fit whole pointers");
+
 		using ByteType  = unsigned char;
 
 		FreeList() {
@@ -32,158 +35,70 @@ class FreeList
 
 
 		RawBlock allocate(SizeType size) {
-			if (size == blockSize && root_.hasNext()) {
-				RawBlock block { root_.getNext(), size};
-				root_.setNext(root_.getNext());
+			if (isCorrectSize(size) && root_.hasNext()) {
+				//std::cout << "FreeList::allocate()\n";
+				RawBlock block {static_cast<void *>(root_.getNextPtr()), size};
+				root_.advance();
 				return block;
 			}
-			else
+			else {
+				//std::cout << "parent_.allocate()\n";
 				return parent_.allocate(size);
+			}
 		}
 
 		void deallocate(RawBlock block) {
-			auto ptr = static_cast<Pointer>(block.getPtr());
+			if (isCorrectSize(block)) {
+				auto node = static_cast<Node*>(block.getPtr());
+				node->setNextPtr(root_.getNextPtr());
+				root_.setNextPtr(node);
 
-			// The amount of blocks it takes up.
-			std::size_t blocks     {block.getSize() / blockSize};
-			std::size_t blockIndex {getBlockIndex(ptr)};
-			std::size_t objectEnd  {blockIndex + blocks};
-
-			while (blockIndex < objectEnd) {
-				unsetMetaBit(blockIndex);
-
-				++blockIndex;
+				//std::cout << "FreeList::deallocate()\n";
+			}
+			else {
+				//std::cout << "parent_.deallocate()\n";
+				parent_.deallocate(block);
 			}
 		}
 
 		bool owns(RawBlock block) {
-			auto ptr = static_cast<Pointer>(block.getPtr());
-
-			return (
-				ptr >= array_.data() + metaDataSize() &&
-			  ptr <  array_.data() + totalSize()
-			);
+			return (isCorrectSize(block) || parent_.owns(block));
 		}
 
 
 	private:
 		using Pointer = ByteType *;
 
-		SizeType getBlockIndex(Pointer blockPtr) {
-			return (blockPtr - array_.data() - metaDataSize()) / blockSize;
+		bool isCorrectSize(RawBlock block) {
+			return isCorrectSize(block.getSize());
 		}
 
-		SizeType getMetaIndex(Pointer blockPtr) {
-			return getMetaIndex(getBlockIndex(blockPtr));
+		bool isCorrectSize(SizeType size) {
+			return (size == blockSize);
 		}
-
-		SizeType getMetaBitIndex(Pointer blockPtr) {
-			return getMetaIndex(getBlockIndex(blockPtr));
-		}
-
-
-		constexpr static SizeType getBlockIndex(
-			SizeType metaIndex, SizeType metaBitIndex) {
-			return (CHAR_BIT * metaIndex) + metaBitIndex;
-		}
-
-		constexpr static SizeType getMetaIndex(SizeType blockIndex) {
-			return blockIndex / CHAR_BIT;
-		}
-
-		constexpr static SizeType getMetaBitIndex(SizeType blockIndex) {
-			return blockIndex % CHAR_BIT;
-		}
-
-
-		Pointer getMetaPtr(Pointer blockPtr) {
-			return array_[getMetaBitIndex(blockPtr)];
-		}
-
-
-		int getMetaBit(Pointer blockPtr) {
-			return getMetaBit(getMetaIndex(blockPtr), getMetaBitIndex(blockPtr));
-		}
-
-		int getMetaBit(SizeType blockIndex) {
-			return getMetaBit(getMetaIndex(blockIndex), getMetaBitIndex(blockIndex));
-		}
-
-		int getMetaBit(SizeType metaIndex, SizeType metaBitIndex) {
-			ByteType & metaPtr {array_[metaIndex]};
-			int temp = (metaPtr >> metaBitIndex) & 1;
-
-			//std::cout << "(" << metaIndex << ", " << metaBitIndex << ") = " << temp << '\n';
-
-			return temp;
-		}
-
-
-		void setMetaBit(Pointer blockPtr) {
-			setMetaBit(getMetaIndex(blockPtr), getMetaBitIndex(blockPtr));
-		}
-
-		void setMetaBit(SizeType blockIndex) {
-			setMetaBit(getMetaIndex(blockIndex), getMetaBitIndex(blockIndex));
-		}
-
-		void setMetaBit(SizeType metaIndex, SizeType metaBitIndex) {
-			ByteType & metaRef {array_[metaIndex]};
-			metaRef |= 1 << metaBitIndex;
-
-			//std::cout << "set (" << metaIndex << ", " << metaBitIndex << ")\n";
-		}
-
-
-		void unsetMetaBit(Pointer blockPtr) {
-			unsetMetaBit(getMetaIndex(blockPtr), getMetaBitIndex(blockPtr));
-		}
-
-		void unsetMetaBit(SizeType blockIndex) {
-			unsetMetaBit(getMetaIndex(blockIndex), getMetaBitIndex(blockIndex));
-
-			//std::cout << "Unset block " << blockIndex << '\n';
-		}
-
-		void unsetMetaBit(SizeType metaIndex, SizeType metaBitIndex) {
-			ByteType & metaRef {array_[metaIndex]};
-			metaRef &= ~(1 << metaBitIndex);
-		}
-
-
-		constexpr static double efficiency() {
-			return static_cast<double>(blockCount) / (metaDataSize() * CHAR_BIT);
-		}
-
-		A    parent_;
-		Node root_;
 
 		class Node {
 			public:
-				Node() : next_ {nullptr} {}
+				Node() : nextPtr_ {nullptr} {}
 
-				Node * getNext() const { return next_; }
-				void setNext(Node * next) { next_ = next; }
+				Node * getNextPtr() const { return nextPtr_; }
+				void setNextPtr(Node * next) { nextPtr_ = next; }
 
-				bool hasNext() const { return next_ != nullptr; }
+				Node & getNext() const { return *nextPtr_; }
+
+				void advance() {
+					setNextPtr(getNext().getNextPtr());
+				}
+
+				bool hasNext() const { return nextPtr_ != nullptr; }
 
 			private:
-				Node * next_;
+				Node * nextPtr_;
 		};
+
+		A    parent_;
+		Node root_;
 };
-
-
-template <
-	template <class T, SizeType size> class Allocator,
-	SizeType blockCoefficient,
-	SizeType blockCountCoefficient,
-	SizeType alignment = alignof(std::max_align_t)>
-using MemoryEfficientBitmappedBlock =
-BitmappedBlock<
-	Allocator,
-	blockCoefficient * alignment,
-  blockCountCoefficient * alignment * CHAR_BIT,
-  alignment>;
 
 
 		}

@@ -6,6 +6,7 @@
 
 #include <allocator_test/smart_allocator.h>
 #include <allocator_test/allocators/bitmapped_block.h>
+#include <allocator_test/allocators/free_list.h>
 
 using namespace bridgerrholt::allocator_test;
 
@@ -168,10 +169,15 @@ int main(int argc, char* argv[])
 
 		using DataType = std::array<int, 64>;
 
+		using AllocatorBaseType =
+			MemoryEfficientBitmappedBlock<
+				std::array, sizeof(DataType)/alignof(DataType), 50, alignof(DataType)
+			>;
+
 		using AllocatorType =
 			SmartAllocator<
-				MemoryEfficientBitmappedBlock<
-					std::array, sizeof(DataType)/alignof(DataType), 50, alignof(DataType)
+				FreeList<
+					AllocatorBaseType, sizeof(DataType)
 				>
 			>;
 

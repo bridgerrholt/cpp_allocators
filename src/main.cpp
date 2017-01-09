@@ -2,14 +2,13 @@
 #include <memory>
 #include <array>
 
-#include <boost/pool/simple_segregated_storage.hpp>
-
 #include "bridgerrholt/allocator_test/allocator_wrapper.h"
 #include "bridgerrholt/allocator_test/allocator_singleton.h"
 #include "bridgerrholt/allocator_test/smart_allocator.h"
 
 #include "bridgerrholt/allocator_test/allocators/malloc_allocator.h"
 #include "bridgerrholt/allocator_test/allocators/bitmapped_block.h"
+#include "bridgerrholt/allocator_test/allocators/free_list.h"
 
 
 class Base
@@ -113,17 +112,38 @@ int main() {
 	using namespace bridgerrholt::allocator_test;
 	using namespace allocators;
 
+	using ObjectType = std::size_t;
+
+	using BaseAllocatorType =
+		MemoryEfficientBitmappedBlock<
+			std::array, 1, 10, alignof(ObjectType)
+		>;
+
 	using AllocatorType =
 		SmartAllocator<
-			MemoryEfficientBitmappedBlock<
-				std::array, 1, 1
-			>
+			FreeList<BaseAllocatorType, sizeof(ObjectType)>
 		>;
 
 	AllocatorType allocator {};
 
-	auto i1 = allocator.constructUnique<A>();
-	auto i2 = std::move(i1);
+	constexpr std::size_t objCount {100};
+	std::array<BasicBlock<ObjectType>, objCount> objs;
+
+	for (std::size_t i = 0; i < objCount; ++i) {
+		objs[i] = allocator.construct<ObjectType>(static_cast<ObjectType>(i));
+	}
+
+	for (std::size_t i = 0; i < objCount; ++i) {
+		allocator.destruct(objs[i]);
+	}
+
+	for (std::size_t i = 0; i < objCount; ++i) {
+		objs[i] = allocator.construct<ObjectType>(static_cast<ObjectType>(i));
+	}
+
+	for (std::size_t i = 0; i < objCount; ++i) {
+		allocator.destruct(objs[i]);
+	}
 
 
 	return 0;
