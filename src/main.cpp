@@ -60,17 +60,34 @@ class B : public Base
 
 
 int main() {
+	using namespace bridgerrholt::allocator_test;
 	using namespace bridgerrholt::allocator_test::allocators;
 
-	using Type = std::max_align_t;
+	using Type = A;
+	using BaseAllocator = FullFreeList<std::array, sizeof(Type), 8>;
+	using AllocatorType = BlockAllocatorWrapper<BaseAllocator>;
 
-	FullFreeList<std::array, sizeof(Type), 8> allocator;
+	AllocatorType allocator;
 
-	void * arr[9];
+	Type * arr[9];
 
-	for (std::size_t i {0}; i < 9; ++i) {
-		arr[i] = allocator.allocate();
-		std::cout << arr[i] << '\n';
+	for (std::size_t i {0}; i < 8; ++i) {
+		arr[i] = allocator.construct<Type>();
+		std::cout << i << ": " << arr[i] << '\n';
+	}
+
+	allocator.destruct(arr[3]);
+	allocator.destruct(arr[5]);
+	allocator.destruct(arr[1]);
+	arr[3] = allocator.construct<Type>();
+	arr[5] = allocator.construct<Type>();
+	arr[1] = allocator.construct<Type>();
+
+	std::cout << std::endl;
+
+	for (std::size_t i {0}; i < 8; ++i) {
+		allocator.destruct(arr[i]);
+		std::cout << i << ": " << arr[i] << '\n';
 	}
 
 

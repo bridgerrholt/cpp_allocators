@@ -12,7 +12,7 @@ namespace bridgerrholt {
 		namespace allocators {
 
 template <template <class, SizeType> class Array,
-	SizeType blockSize,
+	SizeType blockSizeT,
 	SizeType blockCount,
 	SizeType alignment = alignof(std::max_align_t)>
 class alignas(alignment) FullFreeList
@@ -21,6 +21,8 @@ class alignas(alignment) FullFreeList
 		static constexpr SizeType totalSize() { return blockSize * blockCount; }
 
 	public:
+		static constexpr SizeType blockSize {blockSizeT};
+
 		static_assert(blockSize >= sizeof(common::FreeListNode),
 		              "Blocks must be large enough for node data");
 
@@ -30,12 +32,15 @@ class alignas(alignment) FullFreeList
 		using ByteType = char;
 		using ArrayType = Array<ByteType, totalSize()>;
 
+
 		FullFreeList() {
 			ByteType * previousPtr {array_.data()};
 			ByteType * ptr         {previousPtr + blockSize};
-			ByteType * end         {ptr + totalSize()};
+			ByteType * end         {array_.data() + totalSize()};
+			//std::cout << (void*)array_.data() << ":" << (void*)end << '\n';
 
 			while (ptr < end) {
+				//std::cout << (void*)ptr << " " << (void*)previousPtr << std::endl;
 				reinterpret_cast<common::FreeListNode*>(previousPtr)->setNextPtr(
 					reinterpret_cast<common::FreeListNode*>(ptr)
 				);
@@ -44,9 +49,11 @@ class alignas(alignment) FullFreeList
 				ptr += blockSize;
 			}
 
-			reinterpret_cast<common::FreeListNode*>(ptr)->setNextPtr(nullptr);
+			//std::cout << (void*)previousPtr << '\n';
+			reinterpret_cast<common::FreeListNode*>(previousPtr)->setNextPtr(nullptr);
 
-			root_ = {array_.data()};
+			root_ = {reinterpret_cast<common::FreeListNode*>(array_.data())};
+			//std::cout << "FullFreeList() end\n";
 		}
 
 		void * allocate() {

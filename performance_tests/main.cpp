@@ -3,10 +3,12 @@
 #include <vector>
 #include <array>
 #include <numeric>
+#include <algorithm>
 
 #include <allocator_test/smart_allocator.h>
 #include <allocator_test/allocators/bitmapped_block.h>
 #include <allocator_test/allocators/free_list.h>
+#include <allocator_test/allocators/full_free_list.h>
 
 using namespace bridgerrholt::allocator_test;
 
@@ -53,6 +55,8 @@ using NewReturnType = T *;
 template <class T>
 using AllocatorReturnType = BasicBlock<T>;
 
+template <class T>
+using BlockAllocatorReturnType = T *;
 
 template <class Allocator, template <class T> class ReturnType>
 class Test
@@ -170,15 +174,16 @@ int main(int argc, char* argv[])
 		using DataType = std::array<int, 64>;
 
 		using AllocatorBaseType =
-			MemoryEfficientBitmappedBlock<
+			/*MemoryEfficientBitmappedBlock<
 				std::array, sizeof(DataType)/alignof(DataType), 50, alignof(DataType)
+			>;*/
+			FullFreeList<
+				std::array, std::max(sizeof(DataType), alignof(std::max_align_t)), 10000
 			>;
 
 		using AllocatorType =
-			SmartAllocator<
-				FreeList<
-					AllocatorBaseType, sizeof(DataType)
-				>
+			BlockAllocatorWrapper<
+				AllocatorBaseType
 			>;
 
 		constexpr std::size_t elementCount {100};
@@ -186,7 +191,7 @@ int main(int argc, char* argv[])
 		using NewTestType = FullTest<NewAllocator, NewReturnType, DataType>;
 		NewTestType newTest {elementCount};
 
-		using AllocatorTestType = FullTest<AllocatorType, AllocatorReturnType, DataType>;
+		using AllocatorTestType = FullTest<AllocatorType, BlockAllocatorReturnType, DataType>;
 		AllocatorTestType allocatorTest {elementCount};
 
 		std::array<std::array<std::vector<double>, 3>, 2> results;
