@@ -9,6 +9,7 @@
 #include "bridgerrholt/allocator_test/allocators/malloc_allocator.h"
 #include "bridgerrholt/allocator_test/allocators/bitmapped_block.h"
 #include "bridgerrholt/allocator_test/allocators/free_list.h"
+#include "bridgerrholt/allocator_test/allocators/full_free_list.h"
 
 
 class Base
@@ -59,90 +60,17 @@ class B : public Base
 
 
 int main() {
-	/*constexpr std::size_t arrSize {5000};
-	char arr [arrSize];
-	for (std::size_t i = 0; i < arrSize; ++i)
-		arr[i] = 0;
+	using namespace bridgerrholt::allocator_test::allocators;
 
-	//std::unique_ptr<Base> uniquePtr { new A {} };
+	using Type = std::max_align_t;
 
-	using Type = A;
+	FullFreeList<std::array, sizeof(Type), 8> allocator;
 
-	//static_cast<Type*>(arr)[0] = Type {};
+	void * arr[9];
 
-	Base * ptr = new (static_cast<void*>(&arr[0])) Type {};
-
-	std::cout << (std::ptrdiff_t)arr % sizeof(Type) << ' ' << sizeof(Type) << '\n';
-
-	for (std::size_t i = 0; i < arrSize; ++i) {
-		if (arr[i] != 0) {
-			std::cout << "arr[" << i << "]: " << static_cast<int>(arr[i]) << '\n';
-		}
-	}
-
-
-
-	ptr->~Base();*/
-
-
-	/*using namespace bridgerrholt::allocator_test;
-	using AllocatorType = AllocatorSingleton<MallocAllocator>;
-
-	auto block = AllocatorType::get().construct<A>();
-
-	SmartBlockSingleton<MallocAllocator, A> smartBlock {block};
-
-	auto block2 = makeBlock<AllocatorType &, SmartBlockSingleton<MallocAllocator, Base>, A>(AllocatorType::get());*/
-
-	/*
-	boost::simple_segregated_storage<std::size_t> storage;
-	char v [1024];
-	storage.add_block(v, 1024, 256);
-
-	int *i = static_cast<int*>(storage.malloc());
-	*i = 1;
-
-	int *j = static_cast<int*>(storage.malloc_n(1, 512));
-	j[10] = 2;
-
-	storage.free(i);
-	storage.free_n(j, 1, 512);*/
-
-
-	using namespace bridgerrholt::allocator_test;
-	using namespace allocators;
-
-	using ObjectType = std::size_t;
-
-	using BaseAllocatorType =
-		MemoryEfficientBitmappedBlock<
-			std::array, 1, 10, alignof(ObjectType)
-		>;
-
-	using AllocatorType =
-		SmartAllocator<
-			FreeList<BaseAllocatorType, sizeof(ObjectType)>
-		>;
-
-	AllocatorType allocator {};
-
-	constexpr std::size_t objCount {100};
-	std::array<BasicBlock<ObjectType>, objCount> objs;
-
-	for (std::size_t i = 0; i < objCount; ++i) {
-		objs[i] = allocator.construct<ObjectType>(static_cast<ObjectType>(i));
-	}
-
-	for (std::size_t i = 0; i < objCount; ++i) {
-		allocator.destruct(objs[i]);
-	}
-
-	for (std::size_t i = 0; i < objCount; ++i) {
-		objs[i] = allocator.construct<ObjectType>(static_cast<ObjectType>(i));
-	}
-
-	for (std::size_t i = 0; i < objCount; ++i) {
-		allocator.destruct(objs[i]);
+	for (std::size_t i {0}; i < 9; ++i) {
+		arr[i] = allocator.allocate();
+		std::cout << arr[i] << '\n';
 	}
 
 

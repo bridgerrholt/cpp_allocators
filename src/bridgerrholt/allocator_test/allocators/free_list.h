@@ -5,6 +5,8 @@
 #include <bitset>
 #include <cstddef>
 
+#include "common/free_list_node.h"
+
 #include "../common_types.h"
 #include "../block.h"
 
@@ -12,7 +14,7 @@ namespace bridgerrholt {
 	namespace allocator_test {
 		namespace allocators {
 
-template <class A, SizeType blockSize>
+template <class Allocator, SizeType blockSize>
 class FreeList
 {
 	public:
@@ -25,7 +27,7 @@ class FreeList
 
 		}
 
-		FreeList(A parent) : parent_ {parent} {
+		FreeList(Allocator parent) : parent_ {parent} {
 
 		}
 
@@ -49,7 +51,7 @@ class FreeList
 
 		void deallocate(RawBlock block) {
 			if (isCorrectSize(block)) {
-				auto node = static_cast<Node*>(block.getPtr());
+				auto node = static_cast<common::FreeListNode*>(block.getPtr());
 				node->setNextPtr(root_.getNextPtr());
 				root_.setNextPtr(node);
 
@@ -77,27 +79,8 @@ class FreeList
 			return (size == blockSize);
 		}
 
-		class Node {
-			public:
-				Node() : nextPtr_ {nullptr} {}
-
-				Node * getNextPtr() const { return nextPtr_; }
-				void setNextPtr(Node * next) { nextPtr_ = next; }
-
-				Node & getNext() const { return *nextPtr_; }
-
-				void advance() {
-					setNextPtr(getNext().getNextPtr());
-				}
-
-				bool hasNext() const { return nextPtr_ != nullptr; }
-
-			private:
-				Node * nextPtr_;
-		};
-
-		A    parent_;
-		Node root_;
+		Allocator            parent_;
+		common::FreeListNode root_;
 };
 
 
