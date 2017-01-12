@@ -4,6 +4,7 @@
 #include <vector>
 #include <bitset>
 #include <cstddef>
+#include <climits>
 
 #include "../common_types.h"
 #include "../allocator_wrapper.h"
@@ -54,25 +55,26 @@ class alignas(alignment) BitmappedBlock
 		using ByteType  = unsigned char;
 		using ArrayType = Array<ByteType, totalSize()>;
 
-		BitmappedBlock() {
+		BitmappedBlock() : BitmappedBlock(ArrayType {}) {}
+
+		BitmappedBlock(ArrayType && array) :
+			array_                 {array},
+			lastInsertionMetaByte_ {0} {
+
 			for (std::size_t i = 0; i < metaDataSize(); ++i) {
 				array_[i] = 0;
 			}
 
 
-			std::cout << "blockSize  = " << blockSize << '\n'
+			/*std::cout << "blockSize  = " << blockSize << '\n'
 			          << "blockCount = " << blockCount << '\n'
 			          << "alignment  = " << alignment << "\n\n";
 
 			std::cout << "Meta data size: " << metaDataSize() << '\n'
 			          << "Storage size:   " << storageSize() << '\n'
 			          << "Total size:     " << totalSize() << '\n'
-			          << "Efficiency:     " << efficiency() << '\n';
+			          << "Efficiency:     " << efficiency() << '\n';*/
 		}
-
-		BitmappedBlock(ArrayType && array) :
-			array_(array),
-			BitmappedBlock() { }
 
 		bool isEmpty() {
 			for (std::size_t i {0}; i < blockCount; ++i) {
@@ -103,7 +105,9 @@ class alignas(alignment) BitmappedBlock
 			std::size_t currentRegionSize {0};
 
 			// Loop through each bit in the meta data.
-			for (std::size_t byte {0}; byte < metaDataSize(); ++byte) {
+			std::size_t byte {lastInsertionMetaByte_};
+			std::size_t end  {metaDataSize()};
+			while (byte < end) {
 				for (std::size_t bit {0}; bit < CHAR_BIT; ++bit) {
 
 					if (getMetaBit(byte, bit) == 0) {
@@ -122,6 +126,11 @@ class alignas(alignment) BitmappedBlock
 								++index;
 							}
 
+							if (index == blockSize)
+								lastInsertionMetaByte_ = 0;
+							else
+								lastInsertionMetaByte_ = index;
+
 							return {
 								array_.data() + metaDataSize() + (firstIndex * blockSize),
 								size
@@ -138,6 +147,13 @@ class alignas(alignment) BitmappedBlock
 					if (blocksSearched == blockCount)
 						return {nullptr, 0};
 				}
+
+				++byte;
+				if (byte == metaDataSize()) {
+					end = metaDataSize();
+					byte = 0;
+				}
+
 			}
 
 			return {nullptr, 0};
@@ -257,7 +273,8 @@ class alignas(alignment) BitmappedBlock
 			return static_cast<double>(blockCount) / (metaDataSize() * CHAR_BIT);
 		}
 
-		ArrayType array_;
+		ArrayType   array_;
+		std::size_t lastInsertionMetaByte_;
 };
 
 

@@ -8,28 +8,41 @@ namespace bridgerrholt {
 
 class FreeListNode {
 	public:
-		using Pointer = FreeListNode *;
+		FreeListNode * getNextPtr() const { return nextPtr; }
+		void setNextPtr(FreeListNode * next) { nextPtr = next; }
 
-		constexpr FreeListNode() : nextPtr_ {nullptr} {}
-		constexpr FreeListNode(Pointer nextPtr) : nextPtr_{nextPtr} {}
-		constexpr FreeListNode(void  * nextPtr) :
-			FreeListNode(static_cast<FreeListNode>(nextPtr)) {}
+		FreeListNode * nextPtr;
+};
 
-		FreeListNode * getNextPtr() const { return nextPtr_; }
-		void setNextPtr(FreeListNode * next) { nextPtr_ = next; }
 
-		FreeListNode       & getNext()       { return *nextPtr_; }
-		FreeListNode const & getNext() const { return *nextPtr_; }
+class FreeListNodeView
+{
+	public:
+		FreeListNodeView() : FreeListNodeView(nullptr) {}
+		FreeListNodeView(void         * node) :
+			FreeListNodeView(static_cast<FreeListNode*>(node)) {}
+		FreeListNodeView(FreeListNode * node) : node_ {node} {}
+
+		FreeListNode * getNextPtr() const { return node_->getNextPtr(); }
+
+		void setNextPtr(FreeListNode * next) { node_->setNextPtr(next); }
+		void setNextPtr(void         * next) {
+			setNextPtr(static_cast<FreeListNode*>(next));
+		}
+
+		FreeListNode       & getNext()       { return *getNextPtr(); }
+		FreeListNode const & getNext() const { return *getNextPtr(); }
+
+		FreeListNode * getNodePtr() { return node_; }
 
 		void advance() {
 			setNextPtr(getNext().getNextPtr());
 		}
 
-		bool hasNext() const { return (nextPtr_ != nullptr); }
-
+		bool hasNext() const { return (getNextPtr() != nullptr); }
 
 	private:
-		FreeListNode * nextPtr_;
+		FreeListNode * node_;
 };
 
 

@@ -18,19 +18,6 @@ std::ptrdiff_t getTime() {
 	return std::chrono::duration_cast<T>(now).count();
 }
 
-template <typename Function>
-std::ptrdiff_t testTime(std::size_t iterations, Function f) {
-	auto start = getTime();
-
-	for (std::size_t i = 0; i < iterations; ++i) {
-		f();
-	}
-
-	auto end = getTime();
-
-	return end - start;
-}
-
 
 class NewAllocator
 {
@@ -58,34 +45,6 @@ using AllocatorReturnType = BasicBlock<T>;
 template <class T>
 using BlockAllocatorReturnType = T *;
 
-template <class Allocator, template <class T> class ReturnType>
-class Test
-{
-	public:
-		Test() = default;
-		Test(Allocator allocator) : allocator_ {allocator} {}
-
-		void operator()() {
-			static constexpr std::size_t count {100};
-
-			run<std::size_t>(count);
-			run<unsigned char>(count);
-		}
-
-	private:
-		template <class T>
-		void run(std::size_t count) {
-			std::vector<ReturnType<T> > returned;
-
-			for (std::size_t i = 0; i < count; ++i)
-				returned.emplace_back(allocator_.template construct<T>(static_cast<T>(i)));
-
-			for (std::size_t i = 0; i < count; ++i)
-				allocator_.template destruct(returned[i]);
-		}
-
-		Allocator allocator_;
-};
 
 
 template <class T, std::size_t size>
@@ -96,16 +55,40 @@ class VectorWrapper : public std::vector<T>
 };
 
 
-template <class Allocator, template <class> class ReturnType, class T>
-class FullTest
+class TestBase
 {
 	public:
-		FullTest(Allocator allocator, std::size_t elementCount) :
-			allocator_   {allocator},
-			elementCount_{elementCount} {}
+		TestBase(std::string name) : name_ {name} {}
 
-		FullTest(std::size_t elementCount) :
-			elementCount_{elementCount} {}
+		virtual ~TestBase() = 0;
+
+		virtual void initialize() = 0;
+		virtual void construct()  = 0;
+		virtual void destruct()   = 0;
+
+		static constexpr std::size_t testCount {3};
+
+		std::string const & getName() const { return name_; }
+
+	private:
+		std::string name_;
+};
+
+TestBase::~TestBase() {}
+
+
+template <class Allocator, template <class> class BlockType, class T>
+class BasicTest : public TestBase
+{
+	public:
+		BasicTest(std::string name, Allocator allocator, std::size_t elementCount) :
+			allocator_   {std::move(allocator)},
+			elementCount_{elementCount},
+			TestBase     {std::move(name)} {}
+
+		BasicTest(std::string name, std::size_t elementCount) :
+			elementCount_{elementCount},
+			TestBase     {std::move(name)} {}
 
 		void initialize() {
 			pointers_.reserve(elementCount_);
@@ -123,22 +106,23 @@ class FullTest
 			}
 		}
 
-
 		Allocator & getAllocator() { return allocator_; }
 
 
 	private:
 		Allocator   allocator_;
 		std::size_t elementCount_;
-		std::vector<ReturnType<T> > pointers_;
+		std::vector<BlockType<T> > pointers_;
 };
 
 
-template <class TestType>
 class FullTimedTest
 {
 	public:
-		FullTimedTest(TestType & test) {
+		using ResultType = std::ptrdiff_t;
+		using ResultList = std::array<ResultType, TestBase::testCount>;
+
+		FullTimedTest(TestBase & test) {
 			begins_[0] = getTime();
 			test.initialize();
 			ends_[0] = getTime();
@@ -155,13 +139,55 @@ class FullTimedTest
 		}
 
 
-		std::ptrdiff_t get(std::size_t i) { return ends_[i] - begins_[i]; }
+		ResultType get(std::size_t i) { return ends_[i] - begins_[i]; }
+
+		ResultList getResults() {
+			ResultList toReturn;
+
+			for (std::size_t i = 0; i < TestBase::testCount; ++i) {
+				toReturn[i] = get(i);
+			}
+
+			return toReturn;
+		}
 
 	private:
-		std::array<std::ptrdiff_t, 3> begins_;
-		std::array<std::ptrdiff_t, 3> ends_;
+		std::array<ResultType, TestBase::testCount> begins_;
+		std::array<ResultType, TestBase::testCount> ends_;
 };
 
+
+std::vector<std::array<double, TestBase::testCount> >
+runTests(std::vector<TestBase *> tests, std::size_t iterations) {
+
+	using FunctionResultsList = std::vector<FullTimedTest::ResultType>;
+	using FunctionList = std::array<FunctionResultsList, TestBase::testCount>;
+
+	std::vector<FunctionList> results;
+	results.resize(tests.size());
+
+	for (std::size_t i {0}; i < iterations; ++i) {
+		for (std::size_t test {0}; test < tests.size(); ++test) {
+			FullTimedTest timedTest {*tests[test]};
+			auto singleResults = timedTest.getResults();
+			for (std::size_t result {0}; result < singleResults.size(); ++result) {
+				results[test][result].emplace_back(singleResults[result]);
+			}
+		}
+	}
+
+	std::vector<std::array<double, TestBase::testCount> > averages;
+	averages.resize(tests.size());
+	for (std::size_t i {0}; i < results.size(); ++i) {
+		for (std::size_t j {0}; j < results[i].size(); ++j) {
+			auto result = results[i][j];
+			double average {std::accumulate(result.begin(), result.end(), 0.0) / iterations};
+			averages[i][j] = average;
+		}
+	}
+
+	return averages;
+}
 
 
 int main(int argc, char* argv[])
@@ -169,74 +195,57 @@ int main(int argc, char* argv[])
 	try {
 		using namespace allocators;
 
-		std::size_t iterations {1000};
+		std::size_t iterations {1'000};
+		constexpr std::size_t elementCount {10};
 
 		using DataType = std::array<int, 64>;
 
 		using AllocatorBaseType =
 			/*MemoryEfficientBitmappedBlock<
-				std::array, sizeof(DataType)/alignof(DataType), 50, alignof(DataType)
+				VectorWrapper, sizeof(DataType)/alignof(DataType), elementCount/(16*8)
 			>;*/
 			FullFreeList<
-				std::array, std::max(sizeof(DataType), alignof(std::max_align_t)), 10000
+				std::array, std::max(sizeof(DataType), alignof(std::max_align_t)), elementCount
 			>;
 
 		using AllocatorType =
+			//AllocatorWrapper<
 			BlockAllocatorWrapper<
 				AllocatorBaseType
 			>;
 
-		constexpr std::size_t elementCount {100};
 
-		using NewTestType = FullTest<NewAllocator, NewReturnType, DataType>;
-		NewTestType newTest {elementCount};
+		using NewTestType = BasicTest<NewAllocator, NewReturnType, DataType>;
+		NewTestType newTest {"New", elementCount};
 
-		using AllocatorTestType = FullTest<AllocatorType, BlockAllocatorReturnType, DataType>;
-		AllocatorTestType allocatorTest {elementCount};
+		using AllocatorTestType = BasicTest<AllocatorType, /*AllocatorReturnType*/ BlockAllocatorReturnType, DataType>;
+		AllocatorTestType allocatorTest {"Mine", elementCount};
 
-		std::array<std::array<std::vector<double>, 3>, 2> results;
+		std::vector<TestBase *> tests { &newTest, &allocatorTest };
+		auto testResults = runTests(tests, iterations);
+		std::vector<double> totals;
+		totals.resize(tests.size());
 
-		std::size_t testId {0};
+		for (std::size_t i {0}; i < testResults.size(); ++i) {
+			auto result = testResults[i];
 
-		for (std::size_t i = 0; i < iterations * 2; ++i) {
-			if (testId == 0) {
-				auto test = FullTimedTest<NewTestType>{newTest};
+			totals[i] = std::accumulate(result.begin(),
+			                            result.end(), 0.0);
 
-				for (std::size_t j = 0; j < 3; ++j) {
-					results[0][j].push_back(test.get(j));
-				}
-
-				testId = 1;
-			}
-			else {
-				//std::cout << "Pre:  " << allocatorTest.getAllocator().isEmpty() << '\n';
-				auto test = FullTimedTest<AllocatorTestType>{allocatorTest};
-				//std::cout << "Post: " << allocatorTest.getAllocator().isEmpty() << '\n';
-
-				for (std::size_t j = 0; j < 3; ++j) {
-					results[1][j].push_back(test.get(j));
-				}
-
-				testId = 0;
-			}
-		}
-
-		std::array<std::array<std::ptrdiff_t, 3>, 2> averages;
-		for (std::size_t i = 0; i < 2; ++i) {
-			for (std::size_t j = 0; j < 3; ++j) {
-				auto const & vec = results[i][j];
-				averages[i][j] = std::accumulate(vec.begin(), vec.end(), 0.0) / vec.size();
-			}
-		}
-
-		std::cout << std::endl;
-		for (std::size_t i = 0; i < 2; ++i) {
 			std::cout <<
-        "Initialize: " << averages[i][0] << '\n' <<
-		    "Construct:  " << averages[i][1] << '\n' <<
-	      "Destruct:   " << averages[i][2] << '\n' <<
-				"Total:      " << std::accumulate(averages[i].begin(),
-			                                    averages[i].end(), 0) << "\n\n";
+        tests.at(i)->getName() << '\n' <<
+        "Initialize: " << result[0] << '\n' <<
+        "Construct:  " << result[1] << '\n' <<
+        "Destruct:   " << result[2] << '\n' <<
+        "Total:      " << totals[i] << "\n\n";
+		}
+
+		for (std::size_t i {0}; i < testResults.size(); ++i) {
+			for (std::size_t j {0}; j < testResults.size(); ++j) {
+				if (i == j) continue;
+
+				std::cout << tests[i]->getName() << " : " << tests[j]->getName() << " = " << totals[i] / totals[j] << '\n';
+			}
 		}
 
 	}

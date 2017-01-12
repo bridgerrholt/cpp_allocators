@@ -51,9 +51,9 @@ class FreeList
 
 		void deallocate(RawBlock block) {
 			if (isCorrectSize(block)) {
-				auto node = static_cast<common::FreeListNode*>(block.getPtr());
-				node->setNextPtr(root_.getNextPtr());
-				root_.setNextPtr(node);
+				common::FreeListNodeView node {block.getPtr()};
+				node.setNextPtr(root_.getNextPtr());
+				root_.setNextPtr(node.getNodePtr());
 
 				//std::cout << "FreeList::deallocate()\n";
 			}
@@ -79,8 +79,8 @@ class FreeList
 			return (size == blockSize);
 		}
 
-		Allocator            parent_;
-		common::FreeListNode root_;
+		Allocator                parent_;
+		common::FreeListNodeView root_;
 };
 
 

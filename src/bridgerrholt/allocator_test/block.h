@@ -2,6 +2,7 @@
 #define BRIDGERRHOLT_ALLOCATOR_TEST_BLOCK_H
 
 #include <type_traits>
+#include <utility>
 
 #include "common_types.h"
 
