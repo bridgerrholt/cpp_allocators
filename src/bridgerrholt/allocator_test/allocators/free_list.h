@@ -32,14 +32,14 @@ class FreeList
 		}
 
 		bool isEmpty() {
-			return !root_.hasNext();
+			return !root_.hasNode();
 		}
 
 
 		RawBlock allocate(SizeType size) {
-			if (isCorrectSize(size) && root_.hasNext()) {
+			if (isCorrectSize(size) && !isEmpty()) {
 				//std::cout << "FreeList::allocate()\n";
-				RawBlock block {static_cast<void *>(root_.getNextPtr()), size};
+				RawBlock block {root_.getNodePtr(), size};
 				root_.advance();
 				return block;
 			}

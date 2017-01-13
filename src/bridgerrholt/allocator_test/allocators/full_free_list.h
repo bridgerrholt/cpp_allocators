@@ -15,29 +15,45 @@ namespace bridgerrholt {
 template <template <class, SizeType> class Array,
 	SizeType blockSizeT,
 	SizeType blockCount,
-	class AlignmentType = unsigned long long>
-class alignas(alignof(AlignmentType)) FullFreeList
+	std::size_t alignment = alignof(std::max_align_t)>
+class alignas(alignment) FullFreeList
 {
+	public:
+		static_assert(blockSize >= sizeof(common::FreeListNode),
+		              "Blocks must be large enough for node data");
+
+		static_assert(blockSize % alignment == 0,
+		              "Block size must be divisible by the alignment");
+
 	private:
 		static constexpr SizeType totalSize() { return blockSize * blockCount; }
+
+		class alignas(alignment) ArrayElement
+		{
+			public:
+				using NodeType = common::FreeListNode;
+				static constexpr SizeType arraySize {
+					std::max(blockSizeT, sizeof(NodeType)) - sizeof(NodeType)
+				};
+
+				NodeType node;
+
+		};
 
 	public:
 		static constexpr SizeType blockSize {blockSizeT};
 
-		static_assert(blockSize >= sizeof(common::FreeListNode),
-		              "Blocks must be large enough for node data");
 
-		static_assert(blockSize % alignof(AlignmentType) == 0,
-		              "Block size must be divisible by the alignment");
-
-		using ElementType = char;
+		//using ElementType = char;
+		//using ArrayType   = Array<ElementType, totalSize()>;
+		using ElementType = common::FreeListNode;
 		using ArrayType   = Array<ElementType, totalSize()>;
 
 
 		FullFreeList() {
-			void * previousPtr {array_.data()};
-			void * ptr         {previousPtr + blockSize};
-			void * end         {array_.data() + totalSize()};
+			ElementType * previousPtr {array_.data()};
+			ElementType * ptr         {previousPtr + blockSize};
+			ElementType * end         {array_.data() + totalSize()};
 			//std::cout << (void*)array_.data() << ":" << (void*)end << '\n';
 
 			while (ptr < end) {
@@ -66,7 +82,7 @@ class alignas(alignof(AlignmentType)) FullFreeList
 		}
 
 		void * allocate() {
-			auto toReturn = static_cast<void*>(root_.getNextPtr());
+			auto toReturn = static_cast<void*>(root_.getNodePtr());
 
 			if (toReturn != nullptr)
 				root_.advance();
@@ -76,8 +92,8 @@ class alignas(alignof(AlignmentType)) FullFreeList
 
 		void deallocate(void * ptr) {
 			auto blockPtr = static_cast<common::FreeListNode *>(ptr);
-			blockPtr->setNextPtr(root_.getNextPtr());
-			root_.setNextPtr(blockPtr);
+			blockPtr->setNextPtr(root_.getNodePtr());
+			root_.setNodePtr(blockPtr);
 		}
 
 

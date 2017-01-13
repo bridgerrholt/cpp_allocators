@@ -6,6 +6,8 @@ namespace bridgerrholt {
 		namespace allocators {
 			namespace common {
 
+/// A simple POD node for singly-linked free lists. Should not be
+/// used directly, use through @ref FreeListNodeView instead.
 class FreeListNode {
 	public:
 		FreeListNode * getNextPtr() const { return nextPtr; }
@@ -15,31 +17,42 @@ class FreeListNode {
 };
 
 
+/// Acts like an iterator through a linked list of @ref FreeListNode objects.
 class FreeListNodeView
 {
 	public:
-		FreeListNodeView() : FreeListNodeView(nullptr) {}
-		FreeListNodeView(void         * node) :
-			FreeListNodeView(static_cast<FreeListNode*>(node)) {}
-		FreeListNodeView(FreeListNode * node) : node_ {node} {}
+		constexpr FreeListNodeView() : FreeListNodeView(nullptr) {}
 
-		FreeListNode * getNextPtr() const { return node_->getNextPtr(); }
+		constexpr FreeListNodeView(nullptr_t) :
+			FreeListNodeView(static_cast<void*>(nullptr)) {}
+
+		constexpr FreeListNodeView(void * node) :
+			FreeListNodeView(static_cast<FreeListNode*>(node)) {}
+
+		constexpr FreeListNodeView(FreeListNode * node) : node_ {node} {}
+
 
 		void setNextPtr(FreeListNode * next) { node_->setNextPtr(next); }
-		void setNextPtr(void         * next) {
+		void setNextPtr(nullptr_t) {
+			setNextPtr(static_cast<void*>(nullptr));
+		}
+		void setNextPtr(void * next) {
 			setNextPtr(static_cast<FreeListNode*>(next));
 		}
 
-		FreeListNode       & getNext()       { return *getNextPtr(); }
-		FreeListNode const & getNext() const { return *getNextPtr(); }
+		FreeListNode       * getNextPtr()       { return node_->getNextPtr(); }
+		FreeListNode const * getNextPtr() const { return node_->getNextPtr(); }
 
-		FreeListNode * getNodePtr() { return node_; }
+		FreeListNode       * getNodePtr()       { return node_; }
+		FreeListNode const * getNodePtr() const { return node_; }
 
-		void advance() {
-			setNextPtr(getNext().getNextPtr());
-		}
+		void setNodePtr(FreeListNode * node) { node_ = node; }
+
+		void advance() { node_ = node_->getNextPtr(); }
 
 		bool hasNext() const { return (getNextPtr() != nullptr); }
+		bool hasNode() const { return (node_        != nullptr); }
+
 
 	private:
 		FreeListNode * node_;
