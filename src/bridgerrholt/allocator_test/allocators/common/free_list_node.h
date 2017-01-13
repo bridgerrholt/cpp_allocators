@@ -23,7 +23,7 @@ class FreeListNodeView
 	public:
 		constexpr FreeListNodeView() : FreeListNodeView(nullptr) {}
 
-		constexpr FreeListNodeView(nullptr_t) :
+		constexpr FreeListNodeView(std::nullptr_t) :
 			FreeListNodeView(static_cast<void*>(nullptr)) {}
 
 		constexpr FreeListNodeView(void * node) :
@@ -33,7 +33,7 @@ class FreeListNodeView
 
 
 		void setNextPtr(FreeListNode * next) { node_->setNextPtr(next); }
-		void setNextPtr(nullptr_t) {
+		void setNextPtr(std::nullptr_t) {
 			setNextPtr(static_cast<void*>(nullptr));
 		}
 		void setNextPtr(void * next) {

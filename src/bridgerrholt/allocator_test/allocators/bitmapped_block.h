@@ -30,7 +30,7 @@ class alignas(alignment) BitmappedBlock
 			if (blockCount % CHAR_BIT != 0)
 				toReturn += 1;
 
-			// The meta data size must be a multiple of the alignment so that
+			// The meta data size must be a multiple of the minimumAlignment so that
 			// the storage is also aligned.
 			SizeType remainder = toReturn % alignment;
 			if (remainder != 0)
@@ -50,7 +50,7 @@ class alignas(alignment) BitmappedBlock
 
 	public:
 		static_assert(blockSize % alignment == 0,
-		              "Block size must be divisible by the alignment");
+		              "Block size must be divisible by the minimumAlignment");
 
 		using ByteType  = unsigned char;
 		using ArrayType = Array<ByteType, totalSize()>;
@@ -68,7 +68,7 @@ class alignas(alignment) BitmappedBlock
 
 			/*std::cout << "blockSize  = " << blockSize << '\n'
 			          << "blockCount = " << blockCount << '\n'
-			          << "alignment  = " << alignment << "\n\n";
+			          << "minimumAlignment  = " << minimumAlignment << "\n\n";
 
 			std::cout << "Meta data size: " << metaDataSize() << '\n'
 			          << "Storage size:   " << storageSize() << '\n'

@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
 				VectorWrapper, sizeof(DataType)/alignof(DataType), elementCount/(16*8)
 			>;*/
 			FullFreeList<
-				std::array, std::max(sizeof(DataType), alignof(std::max_align_t)), elementCount
+				std::array, sizeof(DataType), elementCount, alignof(DataType)
 			>;
 
 		using AllocatorType =
