@@ -18,19 +18,6 @@ std::size_t getFreeListAlignment(std::size_t minimumAlignment) {
 }
 
 
-template <class T>
-class FreeListNodeWrapper
-{
-	public:
-		FreeListNodeWrapper(common::FreeListNode * node) : node_ {node} {}
-
-
-
-	private:
-		common::FreeListNode node_;
-};
-
-
 template <template <class, SizeType> class Array,
 	SizeType minimumBlockSize,
 	SizeType blockCount,
@@ -92,10 +79,10 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 				Iterator(ArrayElement * ptr) : ptr_ {ptr} {}
 
 				void advance() {
-					ptr_ = ptr_->getNextNode();
+					ptr_ = ptr_->getNodePtr();
 				}
 
-				ArrayElement & get() { return ptr_; }
+				ArrayElement & get() { return *ptr_; }
 
 			private:
 				ArrayElement * ptr_;
@@ -116,7 +103,7 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 			          << "alignment        = " << alignment << '\n' << std::endl;
 
 			ElementType * previousPtr {array_.data()};
-			ElementType * ptr         {previousPtr + blockSize};
+			ElementType * ptr         {previousPtr + 1};
 			ElementType * end         {array_.data() + blockCount};
 			//std::cout << (void*)array_.data() << ":" << (void*)end << '\n';
 
@@ -126,7 +113,7 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 				//	reinterpret_cast<common::FreeListNode*>(ptr)
 				//);
 
-				previousPtr->setNextNode(ptr->getNodePtr());
+				previousPtr->setNextNode(ptr);
 
 				/**reinterpret_cast<std::uintptr_t*>(previousPtr) =
 					reinterpret_cast<std::uintptr_t>(
@@ -150,7 +137,7 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 		/// @return Guaranteed to be aligned with the alignment of
 		/// the FullFreeList instantiation.
 		void * allocate() {
-			auto toReturn = static_cast<void*>(root_.get().getNodePtr());
+			auto toReturn = static_cast<void*>(&root_.get());
 
 			// If root_ points to an unallocated spot,
 			// it now must point to a new spot.
@@ -172,10 +159,10 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 
 			// Overwrite the allocated block with a pointer to
 			// the current next block to allocate.
-			blockPtr->setNextPtr(root_.get().getNodePtr());
+			blockPtr->setNextNode(&root_.get());
 
 			// The block being deallocated is now the next to be allocated.
-			root_ = static_cast<ElementType*>(ptr);
+			root_ = {static_cast<ElementType*>(ptr)};
 		}
 
 

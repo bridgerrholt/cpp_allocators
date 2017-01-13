@@ -196,7 +196,7 @@ int main(int argc, char* argv[])
 		using namespace allocators;
 
 		std::size_t iterations {1'000};
-		constexpr std::size_t elementCount {1};
+		constexpr std::size_t elementCount {1'000};
 
 		using DataType = std::array<int, 64>;
 
