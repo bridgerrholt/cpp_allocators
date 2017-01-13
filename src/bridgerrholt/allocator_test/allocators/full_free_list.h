@@ -18,6 +18,19 @@ std::size_t getFreeListAlignment(std::size_t minimumAlignment) {
 }
 
 
+template <class T>
+class FreeListNodeWrapper
+{
+	public:
+		FreeListNodeWrapper(common::FreeListNode * node) : node_ {node} {}
+
+
+
+	private:
+		common::FreeListNode node_;
+};
+
+
 template <template <class, SizeType> class Array,
 	SizeType minimumBlockSize,
 	SizeType blockCount,
@@ -31,24 +44,61 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 
 		union alignas(alignment) ArrayElement
 		{
-			static constexpr SizeType getRequiredSize() {
-				constexpr SizeType minimum {
-					std::max(minimumBlockSize, sizeof(common::FreeListNode))
+			public:
+				static constexpr SizeType getRequiredSize() {
+					constexpr SizeType minimum {
+						std::max(minimumBlockSize, sizeof(common::FreeListNode))
+					};
+
+					static_assert(minimum != 0, "Array size of ArrayElement can't be 0");
+
+					SizeType remainder {minimum % alignment};
+					SizeType toReturn  {minimum};
+
+					if (remainder != 0)
+						toReturn += (alignment - minimum % alignment);
+
+					return toReturn;
 				};
 
-				static_assert(minimum != 0, "Array size of ArrayElement can't be 0");
+				void setNextNode(ArrayElement * nextNode) {
+					node_ = {nextNode};
+				}
 
-				SizeType remainder {minimum % alignment};
-				SizeType toReturn  {minimum};
+				ArrayElement * getNextNode() {
+					return node_->getNodePtr();
+				}
 
-				if (remainder != 0)
-					toReturn += (alignment - minimum % alignment);
+				ArrayElement * getNodePtr() {
+					return node_;
+				}
 
-				return toReturn;
-			};
+				char * getCharPtr() {
+					data_ = {};
+					return data_;
+				}
 
-			common::FreeListNode node;
-			char                 data [getRequiredSize()];
+
+			private:
+				ArrayElement * node_;
+				char           data_ [getRequiredSize()];
+		};
+
+
+		class Iterator
+		{
+			public:
+				Iterator() {}
+				Iterator(ArrayElement * ptr) : ptr_ {ptr} {}
+
+				void advance() {
+					ptr_ = ptr_->getNextNode();
+				}
+
+				ArrayElement & get() { return ptr_; }
+
+			private:
+				ArrayElement * ptr_;
 		};
 
 		static_assert(sizeof(ArrayElement) == ArrayElement::getRequiredSize(),
@@ -75,37 +125,38 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 				//reinterpret_cast<common::FreeListNode*>(previousPtr)->setNextPtr(
 				//	reinterpret_cast<common::FreeListNode*>(ptr)
 				//);
-				ptr->node = {};
-				common::FreeListNodeView node {&ptr->node};
+
+				previousPtr->setNextNode(ptr->getNodePtr());
 
 				/**reinterpret_cast<std::uintptr_t*>(previousPtr) =
 					reinterpret_cast<std::uintptr_t>(
 						node.getNodePtr()
 					);*/
 
-				previousPtr->node = {node.getNodePtr()};
+				//previousPtr->node = {node.getNodePtr()};
 
 				previousPtr = ptr;
-				ptr += blockSize;
+				++ptr;
 			}
 
 			//std::cout << (void*)previousPtr << '\n';
-			common::FreeListNodeView node {previousPtr};
-			node.setNextPtr(nullptr);
 
-			root_ = {static_cast<void*>(array_.data())};
+			previousPtr->setNextNode(nullptr);
+
+			root_ = {array_.data()};
 			//std::cout << "FullFreeList() end\n";
 		}
 
 		/// @return Guaranteed to be aligned with the alignment of
 		/// the FullFreeList instantiation.
 		void * allocate() {
-			auto toReturn = static_cast<void*>(root_.getNodePtr());
+			auto toReturn = static_cast<void*>(root_.get().getNodePtr());
 
 			// If root_ points to an unallocated spot,
 			// it now must point to a new spot.
 			if (toReturn != nullptr) {
-				root_ = root_->node.getNextPtr();
+				//root_ = root_->node.getNextPtr();
+				root_.advance();
 			}
 
 			return toReturn;
@@ -114,14 +165,14 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 		/// @param ptr Must be a pointer returned by
 		///            this same instance's @ref allocate() method.
 		void deallocate(void * ptr) {
-			auto blockPtr = static_cast<common::FreeListNode*>(ptr);
+			auto blockPtr = static_cast<ArrayElement*>(ptr);
 
-			root_->node = {};
-			common::FreeListNodeView nodeView {&root_->node};
+			//root_->node = {};
+			//common::FreeListNodeView nodeView {&root_->node};
 
 			// Overwrite the allocated block with a pointer to
 			// the current next block to allocate.
-			blockPtr->setNextPtr(nodeView.getNodePtr());
+			blockPtr->setNextPtr(root_.get().getNodePtr());
 
 			// The block being deallocated is now the next to be allocated.
 			root_ = static_cast<ElementType*>(ptr);
@@ -132,8 +183,8 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 		using ElementType = ArrayElement;
 		using ArrayType   = Array<ElementType, blockCount>;
 
-		ArrayType     array_;
-		ElementType * root_;
+		ArrayType array_;
+		Iterator  root_;
 };
 
 
