@@ -9,15 +9,30 @@
 #include <allocator_test/allocators/bitmapped_block.h>
 #include <allocator_test/allocators/free_list.h>
 #include <allocator_test/allocators/full_free_list.h>
+#include <allocator_test/allocators/segregator.h>
+#include <allocator_test/allocators/fallback_allocator.h>
 
-using namespace bridgerrholt::allocator_test;
+#include "test_base.h"
+#include "random_size_allocation_test.h"
+#include "get_time.h"
 
-template <class T = std::chrono::microseconds>
-std::ptrdiff_t getTime() {
-	auto now = std::chrono::system_clock::now().time_since_epoch();
-	return std::chrono::duration_cast<T>(now).count();
-}
 
+namespace bridgerrholt {
+	namespace allocator_test {
+		namespace performance_tests {
+
+class NewReturnTypeSimple
+{
+	public:
+		NewReturnTypeSimple(char * ptr) : ptr_ {ptr} {}
+
+		bool isNull() const { return ptr_ == nullptr; }
+
+		char * getPtr() { return ptr_; }
+
+	private:
+		char * ptr_;
+};
 
 class NewAllocator
 {
@@ -33,6 +48,14 @@ class NewAllocator
 		void destruct(T * ptr) {
 			delete ptr;
 		}
+
+		NewReturnTypeSimple allocate(std::size_t size) {
+			return {new char[size]};
+		}
+
+		void deallocate(NewReturnTypeSimple ptr) {
+			delete[] ptr.getPtr();
+		}
 };
 
 
@@ -41,6 +64,8 @@ using NewReturnType = T *;
 
 template <class T>
 using AllocatorReturnType = BasicBlock<T>;
+
+using AllocatorReturnTypeSimple = RawBlock;
 
 template <class T>
 using BlockAllocatorReturnType = T *;
@@ -53,28 +78,6 @@ class VectorWrapper : public std::vector<T>
 	public:
 		VectorWrapper() : std::vector<T>(size) {}
 };
-
-
-class TestBase
-{
-	public:
-		TestBase(std::string name) : name_ {name} {}
-
-		virtual ~TestBase() = 0;
-
-		virtual void initialize() = 0;
-		virtual void construct()  = 0;
-		virtual void destruct()   = 0;
-
-		static constexpr std::size_t testCount {3};
-
-		std::string const & getName() const { return name_; }
-
-	private:
-		std::string name_;
-};
-
-TestBase::~TestBase() {}
 
 
 template <class Allocator, template <class> class BlockType, class T>
@@ -106,6 +109,11 @@ class BasicTest : public TestBase
 			}
 		}
 
+		void restart() {
+			pointers_ = {};
+		}
+
+
 		Allocator & getAllocator() { return allocator_; }
 
 
@@ -136,6 +144,8 @@ class FullTimedTest
 			begins_[2] = getTime();
 			test.destruct();
 			ends_[2] = getTime();
+
+			test.restart();
 		}
 
 
@@ -189,36 +199,63 @@ runTests(std::vector<TestBase *> tests, std::size_t iterations) {
 	return averages;
 }
 
+		}
+	}
+}
+
+
 
 int main(int argc, char* argv[])
 {
-	try {
+	//try {
+		using namespace bridgerrholt::allocator_test;
 		using namespace allocators;
+		using namespace performance_tests;
 
 		std::size_t iterations {1'000};
 		constexpr std::size_t elementCount {1'000};
 
-		using DataType = std::array<int, 64>;
+		constexpr std::size_t smallBlockSize {16};
+		constexpr std::size_t largeBlockSize {smallBlockSize * 8};
+		constexpr std::size_t blockCount     {elementCount};
 
-		using AllocatorBaseType =
-			/*MemoryEfficientBitmappedBlock<
-				VectorWrapper, sizeof(DataType)/alignof(DataType), elementCount/(16*8)
-			>;*/
+		using SmallAllocatorBase =
 			FullFreeList<
-				std::array, sizeof(DataType), elementCount, alignof(DataType)
+				VectorWrapper, smallBlockSize, blockCount
+			>;
+
+		using SmallAllocator =
+			BlockAllocatorRegularInterface<
+				SmallAllocatorBase
+			>;
+
+		using LargeAllocatorBase =
+			FullFreeList<
+				VectorWrapper, largeBlockSize, blockCount
+			>;
+
+		using LargeAllocator =
+			BlockAllocatorRegularInterface<
+				LargeAllocatorBase
+			>;
+
+		using SecondaryAllocator =
+			BitmappedBlock<
+				VectorWrapper, largeBlockSize, 1024 * 1024
 			>;
 
 		using AllocatorType =
-			//AllocatorWrapper<
-			BlockAllocatorRegularInterface<
-				AllocatorBaseType
+			Segregator<
+				LargeAllocatorBase::blockSize, Segregator<
+					SmallAllocatorBase::blockSize, SmallAllocator, LargeAllocator
+				>, SecondaryAllocator
 			>;
 
 
-		using NewTestType = BasicTest<NewAllocator, NewReturnType, DataType>;
+		using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
 		NewTestType newTest {"New", elementCount};
 
-		using AllocatorTestType = BasicTest<AllocatorType, AllocatorReturnType, DataType>;
+		using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 		AllocatorTestType allocatorTest {"Mine", elementCount};
 
 		std::vector<TestBase *> tests { &newTest, &allocatorTest };
@@ -248,9 +285,9 @@ int main(int argc, char* argv[])
 			}
 		}
 
-	}
+	/*}
 	catch (std::exception & e) {
 		std::cout << "Main caught: " << e.what() << '\n';
 		throw e;
-	}
+	}*/
 }

@@ -71,13 +71,25 @@ class BlockAllocatorRegularInterface :
 		template <class T, class ... ArgTypes>
 		BasicBlock<T> construct(ArgTypes ... args) {
 			return {
-				AllocatorType::template construct<T>(std::forward<ArgTypes>(args)...), 1
+				AllocatorType::template construct<T>(std::forward<ArgTypes>(args)...), sizeof(T)
 			};
 		}
 
 		template <class T>
 		void destruct(BasicBlock<T> block) {
 			AllocatorType::template destruct(block.getPtr());
+		}
+
+		RawBlock allocate(SizeType size) {
+			return {AllocatorType::allocate(), size};
+		}
+
+		void deallocate(RawBlock block) {
+			AllocatorType::deallocate(block.getPtr());
+		}
+
+		bool owns(RawBlock block) {
+			return AllocatorType::owns(block.getPtr());
 		}
 };
 

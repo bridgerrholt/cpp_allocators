@@ -145,6 +145,8 @@ FullFreeList
 		/// @return Guaranteed to be aligned with the alignment of
 		///         the @ref FullFreeList instantiation.
 		void * allocate() {
+			//std::cout << "FullFreeList::allocate()\n";
+
 			auto nextSpot = static_cast<void*>(&root_.get());
 
 			// If root_ points to an unallocated spot,
@@ -170,6 +172,9 @@ FullFreeList
 			root_ = {blockPtr};
 		}
 
+		bool owns(void * ptr) {
+			return (ptr >= array_.data() && ptr < array_.data() + blockCount);
+		}
 
 	private:
 		using IteratorType = FreeListIterator<ElementType>;

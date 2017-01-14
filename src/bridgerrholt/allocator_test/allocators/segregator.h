@@ -14,6 +14,9 @@ template <SizeType threshold,
 class Segregator : private SmallAllocator,
                    private LargeAllocator
 {
+	public:
+		Segregator() {}
+
 		Segregator(SmallAllocator small, LargeAllocator large) :
 			SmallAllocator(small),
 			LargeAllocator(large) {}
@@ -28,15 +31,41 @@ class Segregator : private SmallAllocator,
 		}
 
 		void deallocate(RawBlock block) {
-			if (block.getSize() <= threshold && SmallAllocator::owns(block))
+			if (block.getSize() <= threshold)
 				SmallAllocator::deallocate(block);
 
-			else if (LargeAllocator::owns(block))
+			else
 				LargeAllocator::deallocate(block);
 		}
 
 		bool owns(RawBlock block) {
 			return (SmallAllocator::owns(block) || LargeAllocator::owns(block));
+		}
+};
+
+
+template <SizeType maxSize, class Allocator>
+class MaximumSizeAllocator : private Allocator
+{
+	public:
+		MaximumSizeAllocator() {}
+
+		MaximumSizeAllocator(Allocator allocator) : Allocator {allocator} {}
+
+		RawBlock allocate(SizeType size) {
+			if (size > maxSize)
+				return {nullptr, 0};
+			else
+				return Allocator::allocate(size);
+		}
+
+		void deallocate(RawBlock block) {
+			if (block.getSize() <= maxSize)
+				Allocator::deallocate(block);
+		}
+
+		bool owns(RawBlock block) {
+			return (Allocator::owns(block));
 		}
 };
 
