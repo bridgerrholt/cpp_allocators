@@ -12,15 +12,79 @@ namespace bridgerrholt {
 	namespace allocator_test {
 		namespace allocators {
 
+
+
+// Represents a block in the allocator's memory.
+template <SizeType minimumBlockSize, std::size_t alignment>
+union alignas(alignment) FreeListArrayElement
+{
+	public:
+		static constexpr SizeType getRequiredSize() {
+			constexpr SizeType minimum {
+				std::max(minimumBlockSize, sizeof(common::FreeListNode))
+			};
+
+			static_assert(minimum > 0, "Array size of ArrayElement can't be 0");
+
+			SizeType remainder {minimum % alignment};
+			SizeType toReturn  {minimum};
+
+			if (remainder != 0)
+				toReturn += (alignment - minimum % alignment);
+
+			return toReturn;
+		};
+
+		void setNextNode(FreeListArrayElement * nextNode) {
+			nextNode_ = {nextNode};
+		}
+
+		FreeListArrayElement * getNextNodePtr() {
+			return nextNode_;
+		}
+
+		char * getCharPtr() {
+			data_ = {};
+			return data_;
+		}
+
+
+	private:
+		FreeListArrayElement * nextNode_;
+		char                   data_ [getRequiredSize()];
+};
+
+
+template <class ArrayElement>
+class FreeListIterator
+{
+	public:
+		FreeListIterator() {}
+		FreeListIterator(ArrayElement * ptr) : ptr_ {ptr} {}
+
+		void advance() {
+			ptr_ = ptr_->getNextNodePtr();
+		}
+
+		ArrayElement & get() { return *ptr_; }
+
+	private:
+		ArrayElement * ptr_;
+};
+
+template <SizeType minimumBlockSize, std::size_t alignment>
 constexpr
-std::size_t getFreeListAlignment(std::size_t minimumAlignment) {
+std::size_t
+getFreeListAlignment(SizeType minimumBlockSize, std::size_t minimumAlignment) {
 	return std::max(minimumAlignment, alignof(common::FreeListNode));
 }
 
 
+/// This class itself does not have any undefined behaviour, working with
+/// its returned values is however almost always undefined.
 template <template <class, SizeType> class Array,
-	SizeType minimumBlockSize,
-	SizeType blockCount,
+	SizeType    minimumBlockSize,
+	SizeType    blockCount,
 	std::size_t minimumAlignment = alignof(std::max_align_t)>
 class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 {
@@ -29,71 +93,14 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 			getFreeListAlignment(minimumAlignment)
 		};
 
-		union alignas(alignment) ArrayElement
-		{
-			public:
-				static constexpr SizeType getRequiredSize() {
-					constexpr SizeType minimum {
-						std::max(minimumBlockSize, sizeof(common::FreeListNode))
-					};
+		using ElementType  = FreeListArrayElement<minimumBlockSize, alignment>;
 
-					static_assert(minimum != 0, "Array size of ArrayElement can't be 0");
-
-					SizeType remainder {minimum % alignment};
-					SizeType toReturn  {minimum};
-
-					if (remainder != 0)
-						toReturn += (alignment - minimum % alignment);
-
-					return toReturn;
-				};
-
-				void setNextNode(ArrayElement * nextNode) {
-					node_ = {nextNode};
-				}
-
-				ArrayElement * getNextNode() {
-					return node_->getNodePtr();
-				}
-
-				ArrayElement * getNodePtr() {
-					return node_;
-				}
-
-				char * getCharPtr() {
-					data_ = {};
-					return data_;
-				}
-
-
-			private:
-				ArrayElement * node_;
-				char           data_ [getRequiredSize()];
-		};
-
-
-		class Iterator
-		{
-			public:
-				Iterator() {}
-				Iterator(ArrayElement * ptr) : ptr_ {ptr} {}
-
-				void advance() {
-					ptr_ = ptr_->getNodePtr();
-				}
-
-				ArrayElement & get() { return *ptr_; }
-
-			private:
-				ArrayElement * ptr_;
-		};
-
-		static_assert(sizeof(ArrayElement) == ArrayElement::getRequiredSize(),
+		static_assert(sizeof(ElementType) == ElementType::getRequiredSize(),
 		              "ArrayElement's size is wrong");
 
 
 	public:
-		static constexpr SizeType blockSize {sizeof(ArrayElement)};
+		static constexpr SizeType blockSize {sizeof(ElementType)};
 
 		FullFreeList() {
 			std::cout << "minimumBlockSize = " << minimumBlockSize << '\n'
@@ -102,76 +109,62 @@ class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
 		            << "blockSize        = " << blockSize << '\n'
 			          << "alignment        = " << alignment << '\n' << std::endl;
 
-			ElementType * previousPtr {array_.data()};
-			ElementType * ptr         {previousPtr + 1};
-			ElementType * end         {array_.data() + blockCount};
-			//std::cout << (void*)array_.data() << ":" << (void*)end << '\n';
+			ElementType       *       currentPtr {array_.data()};
+			ElementType       *       nextPtr    {currentPtr + 1};
+			ElementType const * const end        {array_.data() + blockCount};
 
-			while (ptr < end) {
-				//std::cout << (void*)ptr << " " << (void*)previousPtr << std::endl;
-				//reinterpret_cast<common::FreeListNode*>(previousPtr)->setNextPtr(
-				//	reinterpret_cast<common::FreeListNode*>(ptr)
-				//);
+			while (nextPtr < end) {
+				currentPtr->setNextNode(nextPtr);
 
-				previousPtr->setNextNode(ptr);
-
-				/**reinterpret_cast<std::uintptr_t*>(previousPtr) =
-					reinterpret_cast<std::uintptr_t>(
-						node.getNodePtr()
-					);*/
-
-				//previousPtr->node = {node.getNodePtr()};
-
-				previousPtr = ptr;
-				++ptr;
+				currentPtr = nextPtr;
+				++nextPtr;
 			}
 
-			//std::cout << (void*)previousPtr << '\n';
-
-			previousPtr->setNextNode(nullptr);
+			currentPtr->setNextNode(nullptr);
 
 			root_ = {array_.data()};
-			//std::cout << "FullFreeList() end\n";
 		}
 
+		/// Casting and dereferencing the returned pointer is
+		/// implicitly undefined behaviour, but nothing unexpected should happen
+		/// as long as you follow casting guidelines of
+		/// the standard and your compiler.
+		///
 		/// @return Guaranteed to be aligned with the alignment of
-		/// the FullFreeList instantiation.
+		///         the @ref FullFreeList instantiation.
 		void * allocate() {
-			auto toReturn = static_cast<void*>(&root_.get());
+			auto nextSpot = static_cast<void*>(&root_.get());
 
 			// If root_ points to an unallocated spot,
 			// it now must point to a new spot.
-			if (toReturn != nullptr) {
+			if (nextSpot != nullptr) {
 				//root_ = root_->node.getNextPtr();
 				root_.advance();
 			}
 
-			return toReturn;
+			return nextSpot;
 		}
 
 		/// @param ptr Must be a pointer returned by
 		///            this same instance's @ref allocate() method.
 		void deallocate(void * ptr) {
-			auto blockPtr = static_cast<ArrayElement*>(ptr);
-
-			//root_->node = {};
-			//common::FreeListNodeView nodeView {&root_->node};
+			auto blockPtr = static_cast<ElementType*>(ptr);
 
 			// Overwrite the allocated block with a pointer to
 			// the current next block to allocate.
 			blockPtr->setNextNode(&root_.get());
 
 			// The block being deallocated is now the next to be allocated.
-			root_ = {static_cast<ElementType*>(ptr)};
+			root_ = {blockPtr};
 		}
 
 
 	private:
-		using ElementType = ArrayElement;
-		using ArrayType   = Array<ElementType, blockCount>;
+		using IteratorType = FreeListIterator<ElementType>;
+		using ArrayType    = Array<ElementType, blockCount>;
 
-		ArrayType array_;
-		Iterator  root_;
+		ArrayType    array_;
+		IteratorType root_;
 };
 
 
