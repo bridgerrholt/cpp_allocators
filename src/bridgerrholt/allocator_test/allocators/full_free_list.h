@@ -12,16 +12,20 @@ namespace bridgerrholt {
 	namespace allocator_test {
 		namespace allocators {
 
-
+constexpr std::size_t minimumFreeListArrayElementSize {
+	sizeof(std::uintptr_t)
+};
 
 // Represents a block in the allocator's memory.
-template <SizeType minimumBlockSize, std::size_t alignment>
+template <
+	SizeType minimumBlockSize,
+	std::size_t alignment>
 union alignas(alignment) FreeListArrayElement
 {
 	public:
 		static constexpr SizeType getRequiredSize() {
 			constexpr SizeType minimum {
-				std::max(minimumBlockSize, sizeof(common::FreeListNode))
+				std::max(minimumBlockSize, minimumFreeListArrayElementSize)
 			};
 
 			static_assert(minimum > 0, "Array size of ArrayElement can't be 0");
@@ -72,11 +76,18 @@ class FreeListIterator
 		ArrayElement * ptr_;
 };
 
-template <SizeType minimumBlockSize, std::size_t alignment>
+template <
+	SizeType    minimumBlockSize,
+	std::size_t minimumAlignment>
 constexpr
 std::size_t
-getFreeListAlignment(SizeType minimumBlockSize, std::size_t minimumAlignment) {
-	return std::max(minimumAlignment, alignof(common::FreeListNode));
+getFreeListAlignment() {
+	return std::max(
+		minimumAlignment,
+		alignof(FreeListArrayElement<minimumBlockSize,
+		                             std::max(minimumAlignment,
+		                                      minimumFreeListArrayElementSize)>)
+	);
 }
 
 
@@ -86,11 +97,12 @@ template <template <class, SizeType> class Array,
 	SizeType    minimumBlockSize,
 	SizeType    blockCount,
 	std::size_t minimumAlignment = alignof(std::max_align_t)>
-class alignas(getFreeListAlignment(minimumAlignment)) FullFreeList
+class alignas(getFreeListAlignment<minimumBlockSize, minimumAlignment>())
+FullFreeList
 {
 	private:
 		static constexpr std::size_t alignment {
-			getFreeListAlignment(minimumAlignment)
+			getFreeListAlignment<minimumBlockSize, minimumAlignment>()
 		};
 
 		using ElementType  = FreeListArrayElement<minimumBlockSize, alignment>;

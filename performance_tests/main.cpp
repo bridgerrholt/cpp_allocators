@@ -210,7 +210,7 @@ int main(int argc, char* argv[])
 
 		using AllocatorType =
 			//AllocatorWrapper<
-			BlockAllocatorWrapper<
+			BlockAllocatorRegularInterface<
 				AllocatorBaseType
 			>;
 
@@ -218,7 +218,7 @@ int main(int argc, char* argv[])
 		using NewTestType = BasicTest<NewAllocator, NewReturnType, DataType>;
 		NewTestType newTest {"New", elementCount};
 
-		using AllocatorTestType = BasicTest<AllocatorType, /*AllocatorReturnType*/ BlockAllocatorReturnType, DataType>;
+		using AllocatorTestType = BasicTest<AllocatorType, AllocatorReturnType, DataType>;
 		AllocatorTestType allocatorTest {"Mine", elementCount};
 
 		std::vector<TestBase *> tests { &newTest, &allocatorTest };

@@ -2,6 +2,7 @@
 #define BRIDGERRHOLT_ALLOCATOR_TEST_CONSTRUCT_H
 
 #include <utility>
+#include <stdexcept>
 
 #include "block.h"
 
@@ -51,7 +52,51 @@ class BlockAllocatorWrapper : public Allocator
 		template <class T>
 		void destruct(T * ptr) {
 			ptr->~T();
-			Allocator::deallocate(reinterpret_cast<void *>(ptr));
+			Allocator::deallocate(static_cast<void *>(ptr));
+		}
+};
+
+
+template <class Allocator>
+class BlockAllocatorRegularInterface :
+	private BlockAllocatorWrapper<Allocator>
+{
+	public:
+		using AllocatorType = BlockAllocatorWrapper<Allocator>;
+
+		template <class ... ArgTypes>
+		BlockAllocatorRegularInterface(ArgTypes ... args) :
+			AllocatorType {std::forward(args)...} {}
+
+		template <class T, class ... ArgTypes>
+		BasicBlock<T> construct(ArgTypes ... args) {
+			return {
+				AllocatorType::template construct<T>(std::forward<ArgTypes>(args)...), 1
+			};
+		}
+
+		template <class T>
+		void destruct(BasicBlock<T> block) {
+			AllocatorType::template destruct(block.getPtr());
+		}
+};
+
+
+template <class Allocator>
+class SimpleBlockAllocatorRegularInterface :
+	public Allocator
+{
+	public:
+		RawBlock allocate(SizeType size) {
+			if (size > Allocator::blockSize)
+				return {nullptr, 0};
+
+			return {Allocator::allocate(), size};
+		}
+
+
+		void deallocate(RawBlock block) {
+			Allocator::deallocate(block.getPtr());
 		}
 };
 
