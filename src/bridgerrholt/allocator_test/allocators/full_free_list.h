@@ -105,20 +105,24 @@ FullFreeList
 			getFreeListAlignment<minimumBlockSize, minimumAlignment>()
 		};
 
-		using ElementType  = FreeListArrayElement<minimumBlockSize, alignment>;
 
+	public:
+		using ElementType = FreeListArrayElement<minimumBlockSize, alignment>;
+		using ArrayType   = Array<ElementType, blockCount>;
+
+		static constexpr SizeType blockSize {sizeof(ElementType)};
 		static_assert(sizeof(ElementType) == ElementType::getRequiredSize(),
 		              "ArrayElement's size is wrong");
 
+		constexpr FullFreeList() : FullFreeList(ArrayType {}) { }
 
-	public:
-		static constexpr SizeType blockSize {sizeof(ElementType)};
+		FullFreeList(ArrayType array) :
+			array_ {std::move(array)} {
 
-		FullFreeList() {
 			std::cout << "minimumBlockSize = " << minimumBlockSize << '\n'
-		            << "blockCount       = " << blockCount << '\n'
-		            << "minimumAlignment = " << minimumAlignment << '\n'
-		            << "blockSize        = " << blockSize << '\n'
+			          << "blockCount       = " << blockCount << '\n'
+			          << "minimumAlignment = " << minimumAlignment << '\n'
+			          << "blockSize        = " << blockSize << '\n'
 			          << "alignment        = " << alignment << '\n' << std::endl;
 
 			ElementType       *       currentPtr {array_.data()};
@@ -178,7 +182,6 @@ FullFreeList
 
 	private:
 		using IteratorType = FreeListIterator<ElementType>;
-		using ArrayType    = Array<ElementType, blockCount>;
 
 		ArrayType    array_;
 		IteratorType root_;

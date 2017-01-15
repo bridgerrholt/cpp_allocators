@@ -13,15 +13,18 @@ namespace bridgerrholt {
 	namespace allocator_test {
 		namespace allocators {
 
+/// This allocator does not have an inherit alignment requirement, meaning if
+/// you want custom alignment you are responsible for ensuring it is
+/// strict enough for all your data types.
 template <template <class T, SizeType size> class Array,
-	SizeType blockSize,
-	SizeType blockCount,
-  SizeType alignment = alignof(std::max_align_t)>
+	SizeType    minimumBlockSize,
+	SizeType    blockCount,
+  std::size_t alignment = alignof(std::max_align_t)>
 class alignas(alignment) BitmappedBlock
 {
 	private:
 		// Size access operations
-		constexpr static SizeType metaDataSize() {
+		static constexpr SizeType getMetaDataSize() {
 			// Meta data overhead is 1 bit per block.
 			SizeType toReturn { blockCount / CHAR_BIT };
 
@@ -30,47 +33,50 @@ class alignas(alignment) BitmappedBlock
 			if (blockCount % CHAR_BIT != 0)
 				toReturn += 1;
 
-			// The meta data size must be a multiple of the minimumAlignment so that
+			// The meta data size must be a multiple of the alignment so that
 			// the storage is also aligned.
-			SizeType remainder = toReturn % alignment;
+			SizeType remainder {toReturn % alignment};
 			if (remainder != 0)
 				toReturn += alignment - remainder;
 
 			return toReturn;
 		}
 
-		constexpr static SizeType storageSize() {
-			return blockSize * blockCount;
+		static constexpr SizeType storageSize() {
+			return minimumBlockSize * blockCount;
 		}
 
-		constexpr static SizeType totalSize() {
-			return metaDataSize() + storageSize();
+		static constexpr SizeType totalSize() {
+			return getMetaDataSize() + storageSize();
 		}
 
 
 	public:
-		static_assert(blockSize % alignment == 0,
-		              "Block size must be divisible by the minimumAlignment");
+		static_assert(minimumBlockSize % alignment == 0,
+		              "Minimum block size must be divisible by the alignment");
 
-		using ByteType  = unsigned char;
-		using ArrayType = Array<ByteType, totalSize()>;
+		using ElementType = unsigned char;
+		using ArrayType   = Array<ElementType, totalSize()>;
 
-		BitmappedBlock() : BitmappedBlock(ArrayType {}) {}
+		static constexpr
+		SizeType blockSize {std::max(alignment, minimumBlockSize)};
 
-		BitmappedBlock(ArrayType && array) :
-			array_                 {array},
+		constexpr BitmappedBlock() : BitmappedBlock(ArrayType {}) {}
+
+		BitmappedBlock(ArrayType array) :
+			array_                 {std::move(array)},
 			lastInsertionMetaByte_ {0} {
 
-			for (std::size_t i = 0; i < metaDataSize(); ++i) {
+			for (std::size_t i = 0; i < getMetaDataSize(); ++i) {
 				array_[i] = 0;
 			}
 
 
-			/*std::cout << "blockSize  = " << blockSize << '\n'
+			/*std::cout << "minimumBlockSize  = " << minimumBlockSize << '\n'
 			          << "blockCount = " << blockCount << '\n'
 			          << "minimumAlignment  = " << minimumAlignment << "\n\n";
 
-			std::cout << "Meta data size: " << metaDataSize() << '\n'
+			std::cout << "Meta data size: " << getMetaDataSize() << '\n'
 			          << "Storage size:   " << storageSize() << '\n'
 			          << "Total size:     " << totalSize() << '\n'
 			          << "Efficiency:     " << efficiency() << '\n';*/
@@ -89,12 +95,12 @@ class alignas(alignment) BitmappedBlock
 		RawBlock allocate(SizeType size) {
 			// Increase size to be a multiple of the block size.
 			// If the size is 0, a block is still allocated.
-			std::size_t remainder {size % blockSize};
+			std::size_t remainder {size % minimumBlockSize};
 			if (remainder != 0 || size == 0)
-				size += blockSize - remainder;
+				size += minimumBlockSize - remainder;
 
 			// The amount of blocks that must be reserved for the allocation.
-			std::size_t blocksRequired {size / blockSize};
+			std::size_t blocksRequired {size / minimumBlockSize};
 
 			// Total amount of blocks searched so far.
 			// Allocation fails if this reaches blockCount.
@@ -106,7 +112,7 @@ class alignas(alignment) BitmappedBlock
 
 			// Loop through each bit in the meta data.
 			std::size_t byte {lastInsertionMetaByte_};
-			std::size_t end  {metaDataSize()};
+			std::size_t end  {getMetaDataSize()};
 			while (byte < end) {
 				for (std::size_t bit {0}; bit < CHAR_BIT; ++bit) {
 
@@ -126,13 +132,13 @@ class alignas(alignment) BitmappedBlock
 								++index;
 							}
 
-							if (index == blockSize)
+							if (index == minimumBlockSize)
 								lastInsertionMetaByte_ = 0;
 							else
 								lastInsertionMetaByte_ = index;
 
 							return {
-								array_.data() + metaDataSize() + (firstIndex * blockSize),
+								array_.data() + getMetaDataSize() + (firstIndex * minimumBlockSize),
 								size
 							};
 						}
@@ -149,8 +155,8 @@ class alignas(alignment) BitmappedBlock
 				}
 
 				++byte;
-				if (byte == metaDataSize()) {
-					end = metaDataSize();
+				if (byte == getMetaDataSize()) {
+					end = getMetaDataSize();
 					byte = 0;
 				}
 
@@ -163,7 +169,7 @@ class alignas(alignment) BitmappedBlock
 			auto ptr = static_cast<Pointer>(block.getPtr());
 
 			// The amount of blocks it takes up.
-			std::size_t blocks     {block.getSize() / blockSize};
+			std::size_t blocks     {block.getSize() / minimumBlockSize};
 			std::size_t blockIndex {getBlockIndex(ptr)};
 			std::size_t objectEnd  {blockIndex + blocks};
 
@@ -178,17 +184,17 @@ class alignas(alignment) BitmappedBlock
 			auto ptr = static_cast<Pointer>(block.getPtr());
 
 			return (
-				ptr >= array_.data() + metaDataSize() &&
+				ptr >= array_.data() + getMetaDataSize() &&
 			  ptr <  array_.data() + totalSize()
 			);
 		}
 
 
 	private:
-		using Pointer = ByteType *;
+		using Pointer = ElementType *;
 		
 		SizeType getBlockIndex(Pointer blockPtr) {
-			return (blockPtr - array_.data() - metaDataSize()) / blockSize;
+			return (blockPtr - array_.data() - getMetaDataSize()) / minimumBlockSize;
 		}
 
 		SizeType getMetaIndex(Pointer blockPtr) {
@@ -228,7 +234,7 @@ class alignas(alignment) BitmappedBlock
 		}
 
 		int getMetaBit(SizeType metaIndex, SizeType metaBitIndex) {
-			ByteType & metaPtr {array_[metaIndex]};
+			ElementType & metaPtr {array_[metaIndex]};
 			int temp = (metaPtr >> metaBitIndex) & 1;
 
 			//std::cout << "(" << metaIndex << ", " << metaBitIndex << ") = " << temp << '\n';
@@ -246,7 +252,7 @@ class alignas(alignment) BitmappedBlock
 		}
 
 		void setMetaBit(SizeType metaIndex, SizeType metaBitIndex) {
-			ByteType & metaRef {array_[metaIndex]};
+			ElementType & metaRef {array_[metaIndex]};
 			metaRef |= 1 << metaBitIndex;
 
 			//std::cout << "set (" << metaIndex << ", " << metaBitIndex << ")\n";
@@ -264,13 +270,13 @@ class alignas(alignment) BitmappedBlock
 		}
 
 		void unsetMetaBit(SizeType metaIndex, SizeType metaBitIndex) {
-			ByteType & metaRef {array_[metaIndex]};
+			ElementType & metaRef {array_[metaIndex]};
 			metaRef &= ~(1 << metaBitIndex);
 		}
 
 
 		constexpr static double efficiency() {
-			return static_cast<double>(blockCount) / (metaDataSize() * CHAR_BIT);
+			return static_cast<double>(blockCount) / (getMetaDataSize() * CHAR_BIT);
 		}
 
 		ArrayType   array_;
