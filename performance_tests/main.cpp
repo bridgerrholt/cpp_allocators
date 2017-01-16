@@ -207,7 +207,7 @@ runTests(std::vector<TestBase *> tests, std::size_t iterations) {
 
 int main(int argc, char* argv[])
 {
-	//try {
+	try {
 		using namespace bridgerrholt::allocator_test;
 		using namespace allocators;
 		using namespace performance_tests;
@@ -284,10 +284,10 @@ int main(int argc, char* argv[])
 				std::cout << tests[i]->getName() << " : " << tests[j]->getName() << " = " << totals[i] / totals[j] << '\n';
 			}
 		}
-
-	/*}
+	}
 	catch (std::exception & e) {
 		std::cout << "Main caught: " << e.what() << '\n';
 		throw e;
-	}*/
+	}
+
 }
