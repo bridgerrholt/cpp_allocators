@@ -65,7 +65,9 @@ class RandomSizeAllocationTest : public TestBase
 			pointers_ = {};
 			sizes_ = {};
 
-			std::mt19937 randomEngine {static_cast<std::size_t>(getTime())};
+			std::mt19937 randomEngine {
+				static_cast<typename std::mt19937::result_type>(getTime())
+			};
 			std::normal_distribution<> distribution {0, 128};
 
 			for (std::size_t i = 0; i < elementCount_; ++i) {

@@ -226,19 +226,6 @@ class alignas(alignment) BitmappedBlock
 			return (blockPtr - array_.data() - getMetaDataSize()) / blockSize;
 		}
 
-		SizeType getMetaIndex(Pointer blockPtr) {
-			return getMetaIndex(getBlockIndex(blockPtr));
-		}
-
-		SizeType getMetaBitIndex(Pointer blockPtr) {
-			return getMetaIndex(getBlockIndex(blockPtr));
-		}
-
-
-		constexpr static SizeType getBlockIndex(
-			SizeType metaIndex, SizeType metaBitIndex) {
-			return (CHAR_BIT * metaIndex) + metaBitIndex;
-		}
 
 		constexpr static SizeType getMetaIndex(SizeType blockIndex) {
 			return blockIndex / CHAR_BIT;
@@ -249,18 +236,10 @@ class alignas(alignment) BitmappedBlock
 		}
 
 
-		Pointer getMetaPtr(Pointer blockPtr) {
-			return array_[getMetaBitIndex(blockPtr)];
-		}
-
 		Pointer getBlockPtr(SizeType blockIndex) {
 			return array_.data() + getMetaDataSize() + (blockIndex * blockSize);
 		}
 
-
-		int getMetaBit(Pointer blockPtr) {
-			return getMetaBit(getMetaIndex(blockPtr), getMetaBitIndex(blockPtr));
-		}
 
 		int getMetaBit(SizeType blockIndex) {
 			return getMetaBit(getMetaIndex(blockIndex), getMetaBitIndex(blockIndex));
@@ -271,10 +250,6 @@ class alignas(alignment) BitmappedBlock
 		}
 
 
-		void setMetaBit(Pointer blockPtr) {
-			setMetaBit(getMetaIndex(blockPtr), getMetaBitIndex(blockPtr));
-		}
-
 		void setMetaBit(SizeType blockIndex) {
 			setMetaBit(getMetaIndex(blockIndex), getMetaBitIndex(blockIndex));
 		}
@@ -284,14 +259,8 @@ class alignas(alignment) BitmappedBlock
 		}
 
 
-		void unsetMetaBit(Pointer blockPtr) {
-			unsetMetaBit(getMetaIndex(blockPtr), getMetaBitIndex(blockPtr));
-		}
-
 		void unsetMetaBit(SizeType blockIndex) {
 			unsetMetaBit(getMetaIndex(blockIndex), getMetaBitIndex(blockIndex));
-
-			//std::cout << "Unset block " << blockIndex << '\n';
 		}
 
 		void unsetMetaBit(SizeType metaIndex, SizeType metaBitIndex) {
