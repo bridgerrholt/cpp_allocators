@@ -19,7 +19,7 @@ class BitmappedBlockArrayElement
 	public:
 		void clearBits() { data_ = 0; }
 
-		int getBit(std::size_t place) {
+		int getBit(std::size_t place) const {
 			return ((data_ >> place) & 1);
 		}
 
@@ -44,10 +44,13 @@ static_assert(std::is_pod<BitmappedBlockArrayElement>::value,
 /// This is a 1 bit per block overhead.
 template <template <class T, SizeType size> class Array,
 	SizeType    minimumBlockSize,
-	SizeType    blockCount,
+	SizeType    blockCountT,
   std::size_t alignment = alignof(std::max_align_t)>
 class alignas(alignment) BitmappedBlock
 {
+	public:
+		static constexpr SizeType blockCount {blockCountT};
+
 	private:
 		//  Size access operations
 		// Returns the amount of bytes that the meta header data requires.
@@ -88,6 +91,15 @@ class alignas(alignment) BitmappedBlock
 		using ElementType = BitmappedBlockArrayElement;
 		using ArrayType   = Array<ElementType, getTotalSize()>;
 
+		/// Possibly undefined behavior if the swap function for the array requires
+		/// the copying of elements.
+		friend void swap(BitmappedBlock & first, BitmappedBlock & second) {
+			using std::swap;
+
+			swap(first.array_,                 second.array_);
+			swap(first.lastInsertionMetaByte_, second.lastInsertionMetaByte_);
+		}
+
 		BitmappedBlock() : BitmappedBlock(ArrayType {}) {}
 
 		BitmappedBlock(ArrayType array) :
@@ -109,6 +121,14 @@ class alignas(alignment) BitmappedBlock
 			          << "Efficiency:     " << efficiency() << '\n';*/
 		}
 
+		BitmappedBlock(BitmappedBlock && other) :
+			BitmappedBlock {} {
+			swap(*this, other);
+		}
+
+		BitmappedBlock(BitmappedBlock const &) = delete;
+
+
 		bool isEmpty() {
 			for (std::size_t i {0}; i < blockCount; ++i) {
 				if (getMetaBit(i) == 1)
@@ -118,8 +138,23 @@ class alignas(alignment) BitmappedBlock
 			return true;
 		}
 
+		template <class T>
+		void printBits() const {
+			for (std::size_t i {0}; i < blockCount; ++i) {
+				std::cout << getMetaBit(i);
+			}
+
+			for (std::size_t i {0}; i < blockCount; ++i) {
+				std::cout << ' ' << *reinterpret_cast<T const *>(getBlockPtr(i));
+			}
+
+			std::cout << std::endl;
+		}
+
 
 		RawBlock allocate(SizeType size) {
+			std::cout << "lIMB" << lastInsertionMetaByte_ << ":" << blockCount << '\n';
+
 			// An allocation takes place even if the size is 0.
 			if (size == 0) {
 				size = blockSize;
@@ -148,6 +183,7 @@ class alignas(alignment) BitmappedBlock
 				for (std::size_t bit {0}; bit < CHAR_BIT; ++bit) {
 
 					if (getMetaBit(byte, bit) == 0) {
+						std::cout << "F";
 						++currentRegionSize;
 
 						// Allocation will be successful.
@@ -164,10 +200,12 @@ class alignas(alignment) BitmappedBlock
 								++index;
 							}
 
-							if (index == blockSize)
+							auto nextByte = getMetaIndex(index);
+							std::cout << "X" << nextByte << ' ' << getMetaDataSize() << ' ' << index << ' ' << blockCount << '\n';
+							if (nextByte == getMetaDataSize() || index == blockCount)
 								lastInsertionMetaByte_ = 0;
 							else
-								lastInsertionMetaByte_ = index;
+								lastInsertionMetaByte_ = nextByte;
 
 							return {getBlockPtr(firstIndex), size};
 						}
@@ -175,6 +213,7 @@ class alignas(alignment) BitmappedBlock
 
 					// The region has ended if the bit is not 0.
 					else {
+						std::cout << "f";
 						currentRegionSize = 0;
 					}
 
@@ -220,9 +259,10 @@ class alignas(alignment) BitmappedBlock
 
 
 	private:
-		using Pointer = ElementType *;
+		using Pointer      = ElementType *;
+		using ConstPointer = ElementType const *;
 		
-		SizeType getBlockIndex(Pointer blockPtr) {
+		SizeType getBlockIndex(Pointer blockPtr) const {
 			return (blockPtr - array_.data() - getMetaDataSize()) / blockSize;
 		}
 
@@ -236,16 +276,25 @@ class alignas(alignment) BitmappedBlock
 		}
 
 
+		ConstPointer getBlockPtr(SizeType blockIndex) const {
+			return array_.data() + getBlockPtrOffset(blockIndex);
+		}
+
 		Pointer getBlockPtr(SizeType blockIndex) {
-			return array_.data() + getMetaDataSize() + (blockIndex * blockSize);
+			return array_.data() + getBlockPtrOffset(blockIndex);
+		}
+
+		SizeType getBlockPtrOffset(SizeType blockIndex) const {
+			return getMetaDataSize() + (blockIndex * blockSize);
 		}
 
 
-		int getMetaBit(SizeType blockIndex) {
+		int getMetaBit(SizeType blockIndex) const {
 			return getMetaBit(getMetaIndex(blockIndex), getMetaBitIndex(blockIndex));
 		}
 
-		int getMetaBit(SizeType metaIndex, SizeType metaBitIndex) {
+		int getMetaBit(SizeType metaIndex, SizeType metaBitIndex) const {
+			std::cout << "mI" << metaIndex << ":" << metaBitIndex << '\n';
 			return array_[metaIndex].getBit(metaBitIndex);
 		}
 

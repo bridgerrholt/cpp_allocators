@@ -212,7 +212,24 @@ int main(int argc, char* argv[])
 		using namespace allocators;
 		using namespace performance_tests;
 
-		std::size_t iterations {1'000};
+		using Type = long;
+		using AllocatorBaseType = BitmappedBlock<VectorWrapper, sizeof(Type), alignof(Type), alignof(Type)>;
+		using AllocatorType = AllocatorWrapper<AllocatorBaseType>;
+
+		AllocatorType allocator;
+
+		allocator.printBits<Type>();
+
+		std::vector<BasicBlock<Type> > blocks;
+
+		for (Type i = 0; i < AllocatorBaseType::blockCount; ++i) {
+			blocks.emplace_back(allocator.construct<Type>(i + 1));
+			allocator.printBits<Type>();
+		}
+
+
+
+		/*std::size_t iterations {1'000};
 		constexpr std::size_t elementCount {1'000};
 
 		constexpr std::size_t smallBlockSize {16};
@@ -283,7 +300,7 @@ int main(int argc, char* argv[])
 
 				std::cout << tests[i]->getName() << " : " << tests[j]->getName() << " = " << totals[i] / totals[j] << '\n';
 			}
-		}
+		}*/
 	}
 	catch (std::exception & e) {
 		std::cout << "Main caught: " << e.what() << '\n';

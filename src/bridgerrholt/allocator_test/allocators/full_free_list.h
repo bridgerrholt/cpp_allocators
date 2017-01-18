@@ -114,6 +114,13 @@ FullFreeList
 		static_assert(sizeof(ElementType) == ElementType::getRequiredSize(),
 		              "ArrayElement's size is wrong");
 
+		friend void swap(FullFreeList & first, FullFreeList & second) {
+			using std::swap;
+
+			swap(first.array_, second.array_);
+			swap(first.root_,  second.root_);
+		}
+
 		constexpr FullFreeList() : FullFreeList(ArrayType {}) { }
 
 		FullFreeList(ArrayType array) :
@@ -139,6 +146,10 @@ FullFreeList
 			currentPtr->setNextNode(nullptr);
 
 			root_ = {array_.data()};
+		}
+
+		FullFreeList(FullFreeList && other) : FullFreeList() {
+			swap(*this, other);
 		}
 
 		/// Casting and dereferencing the returned pointer is

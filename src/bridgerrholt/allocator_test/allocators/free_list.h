@@ -23,12 +23,23 @@ class FreeList
 
 		using ByteType  = unsigned char;
 
+		friend void swap(FreeList & first, FreeList & second) {
+			using std::swap;
+
+			swap(first.parent_, second.parent_);
+			swap(first.root_,   second.root_);
+		}
+
 		FreeList() {
 
 		}
 
 		FreeList(Allocator parent) : parent_ {parent} {
 
+		}
+
+		FreeList(FreeList && other) : FreeList {} {
+			swap(*this, other);
 		}
 
 		bool isEmpty() {

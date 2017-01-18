@@ -20,7 +20,7 @@ class AllocatorWrapper : public Allocator
 		BasicBlock<T> construct(ArgTypes ... args) {
 			RawBlock block = Allocator::allocate(sizeof(T));
 			T * ptr = new (block.getPtr()) T {std::forward<ArgTypes>(args)...};
-			return { block.getPtr(), block.getSize() };
+			return { ptr, block.getSize() };
 		}
 
 		template <class T>
