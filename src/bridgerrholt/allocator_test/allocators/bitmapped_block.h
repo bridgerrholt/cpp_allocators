@@ -1,6 +1,9 @@
 #ifndef BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_BITMAPPED_BLOCK_H
 #define BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_BITMAPPED_BLOCK_H
 
+#define BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_ALLOCATION
+#define BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_DEALLOCATION
+
 #include <vector>
 #include <bitset>
 #include <cstddef>
@@ -153,8 +156,6 @@ class alignas(alignment) BitmappedBlock
 
 
 		RawBlock allocate(SizeType size) {
-			std::cout << "lIMB" << lastInsertionMetaByte_ << ":" << blockCount << '\n';
-
 			// An allocation takes place even if the size is 0.
 			if (size == 0) {
 				size = blockSize;
@@ -183,7 +184,6 @@ class alignas(alignment) BitmappedBlock
 				for (std::size_t bit {0}; bit < CHAR_BIT; ++bit) {
 
 					if (getMetaBit(byte, bit) == 0) {
-						std::cout << "F";
 						++currentRegionSize;
 
 						// Allocation will be successful.
@@ -200,12 +200,12 @@ class alignas(alignment) BitmappedBlock
 								++index;
 							}
 
-							auto nextByte = getMetaIndex(index);
-							std::cout << "X" << nextByte << ' ' << getMetaDataSize() << ' ' << index << ' ' << blockCount << '\n';
-							if (nextByte == getMetaDataSize() || index == blockCount)
+#ifdef BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_ALLOCATION
+							if (index == blockCount)
 								lastInsertionMetaByte_ = 0;
 							else
-								lastInsertionMetaByte_ = nextByte;
+								lastInsertionMetaByte_ = getMetaIndex(index);
+#endif
 
 							return {getBlockPtr(firstIndex), size};
 						}
@@ -213,7 +213,6 @@ class alignas(alignment) BitmappedBlock
 
 					// The region has ended if the bit is not 0.
 					else {
-						std::cout << "f";
 						currentRegionSize = 0;
 					}
 
@@ -227,7 +226,6 @@ class alignas(alignment) BitmappedBlock
 					end = getMetaDataSize();
 					byte = 0;
 				}
-
 			}
 
 			return RawBlock::makeNullBlock();
@@ -246,6 +244,11 @@ class alignas(alignment) BitmappedBlock
 
 				++blockIndex;
 			}
+
+#ifdef BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_DEALLOCATION
+			lastInsertionMetaByte_ = getMetaIndex(getBlockIndex(ptr));
+#endif
+
 		}
 
 		bool owns(RawBlock block) {
@@ -294,7 +297,6 @@ class alignas(alignment) BitmappedBlock
 		}
 
 		int getMetaBit(SizeType metaIndex, SizeType metaBitIndex) const {
-			std::cout << "mI" << metaIndex << ":" << metaBitIndex << '\n';
 			return array_[metaIndex].getBit(metaBitIndex);
 		}
 

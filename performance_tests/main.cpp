@@ -131,39 +131,42 @@ class FullTimedTest
 		using ResultList = std::array<ResultType, TestBase::testCount>;
 
 		FullTimedTest(TestBase & test) {
-			begins_[0] = getTime();
+			auto initializeStart = getTime();
 			test.initialize();
-			ends_[0] = getTime();
+			results_[0] = getTime() - initializeStart;
 
-
-			begins_[1] = getTime();
+			auto constructStart = getTime();
 			test.construct();
-			ends_[1] = getTime();
+			results_[1] = getTime() - constructStart;
 
-
-			begins_[2] = getTime();
+			auto destructStart = getTime();
 			test.destruct();
-			ends_[2] = getTime();
+			results_[2] = getTime() - destructStart;
+
+			test.restart();
+
+			constructStart = getTime();
+			test.construct();
+			results_[1] += getTime() - constructStart;
+
+
+			destructStart = getTime();
+			test.destruct();
+			results_[2] += getTime() - destructStart;
+
 
 			test.restart();
 		}
 
 
-		ResultType get(std::size_t i) { return ends_[i] - begins_[i]; }
+		ResultType get(std::size_t i) { return results_[i]; }
 
 		ResultList getResults() {
-			ResultList toReturn;
-
-			for (std::size_t i = 0; i < TestBase::testCount; ++i) {
-				toReturn[i] = get(i);
-			}
-
-			return toReturn;
+			return results_;
 		}
 
 	private:
-		std::array<ResultType, TestBase::testCount> begins_;
-		std::array<ResultType, TestBase::testCount> ends_;
+		ResultList results_;
 };
 
 
@@ -212,7 +215,7 @@ int main(int argc, char* argv[])
 		using namespace allocators;
 		using namespace performance_tests;
 
-		using Type = long;
+		/*using Type = long;
 		using AllocatorBaseType = BitmappedBlock<VectorWrapper, sizeof(Type), alignof(Type), alignof(Type)>;
 		using AllocatorType = AllocatorWrapper<AllocatorBaseType>;
 
@@ -227,9 +230,19 @@ int main(int argc, char* argv[])
 			allocator.printBits<Type>();
 		}
 
+		allocator.destruct(blocks[3]);
+		allocator.printBits<Type>();
+		blocks[3] = allocator.construct<Type>(9);
+		allocator.printBits<Type>();
+
+		for (auto i : blocks) {
+			allocator.destruct(i);
+			allocator.printBits<Type>();
+		}*/
 
 
-		/*std::size_t iterations {1'000};
+
+		std::size_t iterations {1'000};
 		constexpr std::size_t elementCount {1'000};
 
 		constexpr std::size_t smallBlockSize {16};
@@ -300,7 +313,7 @@ int main(int argc, char* argv[])
 
 				std::cout << tests[i]->getName() << " : " << tests[j]->getName() << " = " << totals[i] / totals[j] << '\n';
 			}
-		}*/
+		}
 	}
 	catch (std::exception & e) {
 		std::cout << "Main caught: " << e.what() << '\n';
