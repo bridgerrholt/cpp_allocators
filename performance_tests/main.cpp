@@ -246,10 +246,10 @@ int main(int argc, char* argv[])
 		constexpr std::size_t elementCount {1'000};
 
 		constexpr std::size_t smallBlockSize {16};
-		constexpr std::size_t largeBlockSize {smallBlockSize * 8};
+		constexpr std::size_t largeBlockSize {smallBlockSize * 4};
 		constexpr std::size_t blockCount     {elementCount};
 
-		using SmallAllocatorBase =
+		/*using SmallAllocatorBase =
 			FullFreeList<
 				VectorWrapper, smallBlockSize, blockCount
 			>;
@@ -279,6 +279,21 @@ int main(int argc, char* argv[])
 				LargeAllocatorBase::blockSize, Segregator<
 					SmallAllocatorBase::blockSize, SmallAllocator, LargeAllocator
 				>, SecondaryAllocator
+			>;*/
+
+		using SmallAllocator =
+			BitmappedBlock<
+				VectorWrapper, smallBlockSize, 1000
+			>;
+
+		using LargeAllocator =
+		BitmappedBlock<
+			VectorWrapper, 16 * 16, 1024 * 1024
+		>;
+
+		using AllocatorType =
+			Segregator<
+				SmallAllocator::blockSize, SmallAllocator, LargeAllocator
 			>;
 
 

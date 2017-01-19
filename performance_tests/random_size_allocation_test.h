@@ -75,6 +75,13 @@ class RandomSizeAllocationTest : public TestBase
 				sizes_.emplace_back(num);
 				//std::cout << num << '\n';
 			}
+
+			/*std::size_t count {0};
+			for (auto i : sizes_) {
+				if (i <= 16)
+					++count;
+			}
+			std::cout << static_cast<double>(count) / sizes_.size() << '\n';*/
 		}
 
 
