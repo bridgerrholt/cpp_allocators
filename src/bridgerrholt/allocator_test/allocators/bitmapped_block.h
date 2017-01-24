@@ -110,6 +110,8 @@ class alignas(alignment) BitmappedBlock
 			array_                 {std::move(array)},
 			lastInsertionMetaByte_ {0} {
 
+			std::cout << "BitmappedBlock()\n";
+
 			for (std::size_t i = 0; i < getMetaDataSize(); ++i) {
 				array_[i].clearBits();
 			}
@@ -142,6 +144,15 @@ class alignas(alignment) BitmappedBlock
 			return true;
 		}
 
+		bool isFull() {
+			for (std::size_t i {0}; i < blockCount; ++i) {
+				if (getMetaBit(i) == 0)
+					return false;
+			}
+
+			return true;
+		}
+
 		template <class T>
 		void printBits() const {
 			for (std::size_t i {0}; i < blockCount; ++i) {
@@ -154,7 +165,6 @@ class alignas(alignment) BitmappedBlock
 
 			std::cout << std::endl;
 		}
-
 
 		RawBlock allocate(SizeType size) {
 			// An allocation takes place even if the size is 0.
@@ -182,18 +192,21 @@ class alignas(alignment) BitmappedBlock
 			SizeType end {getMetaDataSize()};
 			auto i = metaBegin();
 
-			while (i != end) {
+			do {
 				if (i.get() == 0) {
 					++currentRegionSize;
 
 					if (currentRegionSize == blocksRequired) {
-						std::size_t firstIndex{blocksSearched - blocksRequired + 1};
+						// Set all the meta bits to indicate occupation of the blocks.
+						std::size_t firstIndex {blocksSearched - blocksRequired + 1};
+						std::size_t lastIndex  {blocksSearched};
 
-						while (blocksRequired > 0) {
-							i.set();
+						std::size_t index {firstIndex};
 
-							++i;
-							--blocksRequired;
+						while (index <= lastIndex) {
+							setMetaBit(index);
+
+							++index;
 						}
 
 #ifdef BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_ALLOCATION
@@ -210,17 +223,11 @@ class alignas(alignment) BitmappedBlock
 				}
 
 				++blocksSearched;
-				std::cout << blocksSearched << " " << blockCount << '\n';
+				//std::cout << blocksSearched << " " << blockCount << '\n';
 				if (blocksSearched == blockCount)
 					return RawBlock::makeNullBlock();
 
-				++i;
-
-				if (i.getByte() == getMetaDataSize()) {
-					end = lastInsertionMetaByte_;
-					i.setByte(0);
-				}
-			}
+			} while (i.increment());
 
 #else
 			// Loop through each bit in the meta data.
@@ -318,10 +325,13 @@ class alignas(alignment) BitmappedBlock
 		class MetaBitIterator {
 			public:
 				constexpr MetaBitIterator(BitmappedBlock & allocator,
+				                          SizeType         byteEnd,
 				                          SizeType         byteStart,
 				                          unsigned         bitStart = 0) :
 					allocator_ {allocator},
-					byte_      {byteStart},
+					byteEnd_   {byteEnd},
+					byteStart_ {byteStart},
+					byte_      {byteStart_},
 					bit_       {bitStart} {}
 
 				SizeType getByte() const { return byte_; }
@@ -347,8 +357,7 @@ class alignas(alignment) BitmappedBlock
 
 				bool incrementByte() {
 					++byte_;
-					if (byte_ == end_) {
-						byte_ = 0;
+					if (byte_ == byteEnd_) {
 						return false;
 					}
 					else {
@@ -356,10 +365,23 @@ class alignas(alignment) BitmappedBlock
 					}
 				}
 
+				bool increment() {
+					if (!incrementBit()) {
+						++byte_;
 
+						if (byte_ == byteEnd_) {
+							byteEnd_ = byteStart_;
+						}
 
-				void setEnd(SizeType end) {
-					end_ = end;
+						if (byte_ != byteEnd_)
+							return true;
+						return false;
+					}
+
+					if ((*this) != allocator_.metaEnd())
+						return true;
+					return false;
+					return ((*this) != allocator_.metaEnd());
 				}
 
 
@@ -390,8 +412,8 @@ class alignas(alignment) BitmappedBlock
 				}
 
 				bool operator==(SizeType blockIndex) {
-					return (allocator_.getMetaIndex(blockIndex) == byte_ &&
-						      allocator_.getMetaBitIndex(blockIndex) == bit_);
+					return (BitmappedBlock::getMetaIndex   (blockIndex) == byte_ &&
+									BitmappedBlock::getMetaBitIndex(blockIndex) == bit_);
 				}
 
 				bool operator!=(SizeType blockIndex) {
@@ -401,18 +423,19 @@ class alignas(alignment) BitmappedBlock
 
 			private:
 				BitmappedBlock & allocator_;
+				SizeType         byteEnd_;
+				SizeType         byteStart_;
 				SizeType         byte_;
 				unsigned         bit_;
-				SizeType         end_;
 		};
 
 
 		MetaBitIterator metaBegin() {
-			return {*this, lastInsertionMetaByte_};
+			return {*this, getMetaDataSize(), lastInsertionMetaByte_};
 		}
 
-		constexpr MetaBitIterator metaEnd() {
-			return {*this, getMetaIndex(blockCount - 1), getMetaBitIndex(blockCount - 1)};
+		constexpr SizeType metaEnd() {
+			return blockCount;
 		}
 
 		SizeType getBlockIndex(Pointer blockPtr) const {

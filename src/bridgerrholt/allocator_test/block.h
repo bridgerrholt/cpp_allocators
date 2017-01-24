@@ -17,6 +17,14 @@ class BlockBase
 
 		SizeType getSize() const { return size_; }
 
+		bool operator==(BlockBase const & other) {
+			return (getSize() == other.getSize());
+		}
+
+		bool operator!=(BlockBase const & other) {
+			return !(*this == other);
+		}
+
 	private:
 		SizeType size_;
 };
@@ -48,6 +56,15 @@ class BasicBlock : public BlockBase
 				 std::is_same<void, Type>()),
 				"Cannot convert to non-base"
 			);
+		}
+
+		bool operator==(BasicBlock const & other) {
+			return (BlockBase::operator==(other) &&
+				      getPtr() == other.getPtr());
+		}
+
+		bool operator!=(BasicBlock const & other) {
+			return !(*this == other);
 		}
 
 		bool isNull() const { return (ptr_ == nullptr); }

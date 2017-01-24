@@ -4,6 +4,7 @@
 #include <array>
 #include <numeric>
 #include <algorithm>
+#include <cassert>
 
 #include <allocator_test/smart_allocator.h>
 #include <allocator_test/allocators/bitmapped_block.h>
@@ -56,6 +57,8 @@ class NewAllocator
 		void deallocate(NewReturnTypeSimple ptr) {
 			delete[] ptr.getPtr();
 		}
+
+		bool isEmpty() { return true; }
 };
 
 
@@ -180,6 +183,7 @@ runTests(std::vector<TestBase *> tests, std::size_t iterations) {
 	results.resize(tests.size());
 
 	for (std::size_t i {0}; i < iterations; ++i) {
+		std::cout << "Iteration " << i << '\n';
 		for (std::size_t test {0}; test < tests.size(); ++test) {
 			FullTimedTest timedTest {*tests[test]};
 			auto singleResults = timedTest.getResults();
@@ -230,9 +234,7 @@ int main(int argc, char* argv[])
 			allocator.printBits<Type>();
 		}
 
-		allocator.destruct(blocks[3]);
-		allocator.printBits<Type>();
-		blocks[3] = allocator.construct<Type>(9);
+		std::cout << allocator.construct<Type>().getPtr() << '\n';
 		allocator.printBits<Type>();
 
 		for (auto i : blocks) {
@@ -242,7 +244,7 @@ int main(int argc, char* argv[])
 
 
 
-		std::size_t iterations {1'000};
+		std::size_t iterations {1000};
 		constexpr std::size_t elementCount {1'000};
 
 		constexpr std::size_t smallBlockSize {16};
@@ -281,20 +283,24 @@ int main(int argc, char* argv[])
 				>, SecondaryAllocator
 			>;*/
 
-		using SmallAllocator =
+		/*using SmallAllocator =
 			BitmappedBlock<
-				VectorWrapper, smallBlockSize, 1000
+				VectorWrapper, smallBlockSize, 100000
 			>;
 
 		using LargeAllocator =
 		BitmappedBlock<
-			VectorWrapper, 16 * 16, 1024 * 1024
+			VectorWrapper, 16 * 16, 1024 * 1024 * 2
 		>;
 
 		using AllocatorType =
 			Segregator<
 				SmallAllocator::blockSize, SmallAllocator, LargeAllocator
-			>;
+			>;*/
+
+		using AllocatorType = BitmappedBlock<
+			VectorWrapper, 16 * 16, 1024 * 1024 * 2
+		>;
 
 
 		using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
@@ -303,7 +309,7 @@ int main(int argc, char* argv[])
 		using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 		AllocatorTestType allocatorTest {"Mine", elementCount};
 
-		std::vector<TestBase *> tests { &newTest, &allocatorTest };
+		std::vector<TestBase *> tests { /*&newTest,*/ &allocatorTest };
 		auto testResults = runTests(tests, iterations);
 		std::vector<double> totals;
 		totals.resize(tests.size());
