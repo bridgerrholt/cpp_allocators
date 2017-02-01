@@ -108,7 +108,8 @@ class alignas(alignment) BitmappedBlock
 
 		BitmappedBlock(ArrayType array) :
 			array_                 {std::move(array)},
-			lastInsertionMetaByte_ {0} {
+			lastInsertionMetaByte_ {0},
+			lastCount_             {0} {
 
 			std::cout << "BitmappedBlock()\n";
 
@@ -155,15 +156,31 @@ class alignas(alignment) BitmappedBlock
 
 		template <class T>
 		void printBits() const {
-			for (std::size_t i {0}; i < blockCount; ++i) {
-				std::cout << getMetaBit(i);
-			}
+			printMeta();
 
 			for (std::size_t i {0}; i < blockCount; ++i) {
 				std::cout << ' ' << *reinterpret_cast<T const *>(getBlockPtr(i));
 			}
 
 			std::cout << std::endl;
+		}
+
+		void printMeta() const {
+			for (std::size_t i {0}; i < blockCount; ++i) {
+				std::cout << getMetaBit(i);
+			}
+		}
+
+		SizeType countUsedBlocks() {
+			SizeType count {0};
+			for (std::size_t i {0}; i < blockCount; ++i) {
+				if (getMetaBit(i) == 1)
+					++count;
+			}
+
+			lastCount_ = count;
+
+			return count;
 		}
 
 		RawBlock allocate(SizeType size) {
@@ -179,6 +196,8 @@ class alignas(alignment) BitmappedBlock
 			// The amount of blocks that must be reserved for the allocation.
 			std::size_t blocksRequired {size / blockSize};
 
+
+
 			// Total amount of blocks searched so far.
 			// Allocation fails if this reaches blockCount.
 			std::size_t blocksSearched {0};
@@ -193,31 +212,29 @@ class alignas(alignment) BitmappedBlock
 			auto i = metaBegin();
 
 			do {
+				++blocksSearched;
+
 				if (i.get() == 0) {
 					++currentRegionSize;
 
 					if (currentRegionSize == blocksRequired) {
-						// Set all the meta bits to indicate occupation of the blocks.
-						std::size_t firstIndex {blocksSearched - blocksRequired + 1};
-						std::size_t lastIndex  {blocksSearched};
-
-						std::size_t index {firstIndex};
-
-						/*while (index <= lastIndex) {
-							setMetaBit(index);
-
-							++index;
-						}*/
-
-						auto iterator = i.SimpleMetaIterator::operator-(
-							static_cast<long long>(blocksRequired) - 1
+						auto iteratorStart = i.SimpleMetaIterator::operator-(
+							static_cast<long long>(blocksRequired - 1)
 						);
 
+						auto iterator = iteratorStart;
+
+						auto countBefore = lastCount_;
 						while (iterator != i) {
 							iterator.set();
 
 							++iterator;
 						}
+
+						iterator.set();
+
+						//printMeta();
+						//std::cout << std::endl;
 
 #ifdef BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_ALLOCATION
 						if (i == blockCount)
@@ -225,14 +242,17 @@ class alignas(alignment) BitmappedBlock
 						else
 							lastInsertionMetaByte_ = i.getByte();
 #endif
-						return {getBlockPtr(firstIndex), size};
+						/*auto countAfter = countUsedBlocks();
+						if (countAfter != countBefore + blocksRequired) {
+							throw std::runtime_error("Failed allocation");
+						}*/
+						return {getBlockPtr(iteratorStart), size};
 					}
 				}
 				else {
 					currentRegionSize = 0;
 				}
 
-				++blocksSearched;
 				//std::cout << blocksSearched << " " << blockCount << '\n';
 				if (blocksSearched == blockCount)
 					return RawBlock::makeNullBlock();
@@ -303,10 +323,19 @@ class alignas(alignment) BitmappedBlock
 
 			// The amount of blocks it takes up.
 			std::size_t blocks     {block.getSize() / blockSize};
-			std::size_t blockIndex {getBlockIndex(ptr)};
-			std::size_t objectEnd  {blockIndex + blocks};
+			std::size_t blockIndexStart {getBlockIndex(ptr)};
+			std::size_t objectEnd  {blockIndexStart + blocks};
 
+			if (blocks > 1) {
+				std::cout << "";
+			}
+
+			auto countBefore = lastCount_;
+
+			std::size_t blockIndex {blockIndexStart};
 			while (blockIndex < objectEnd) {
+				if (getMetaBit(blockIndex) != 1)
+					throw std::runtime_error("Bad deallocate");
 				unsetMetaBit(blockIndex);
 
 				++blockIndex;
@@ -316,6 +345,17 @@ class alignas(alignment) BitmappedBlock
 			lastInsertionMetaByte_ = getMetaIndex(getBlockIndex(ptr));
 #endif
 
+			//printMeta();
+			//std::cout << std::endl;
+
+			/*if (countBefore - blocks == 0) {
+				std::cout << "To empty\n";
+			}
+
+			auto countAfter = countUsedBlocks();
+			if (countAfter != countBefore - blocks) {
+				throw std::runtime_error("Bad deallocate");
+			}*/
 		}
 
 		bool owns(RawBlock block) {
@@ -362,7 +402,7 @@ class alignas(alignment) BitmappedBlock
 
 				template <class T>
 				SimpleMetaIterator operator+(T value) const {
-					T newBit {bit_ + value};
+					T newBit {static_cast<T>(bit_) + value};
 					SizeType newByte {byte_ + (newBit / CHAR_BIT)};
 					newBit %= CHAR_BIT;
 
@@ -374,11 +414,25 @@ class alignas(alignment) BitmappedBlock
 
 				template <class T>
 				SimpleMetaIterator operator-(T value) const {
-					T bitAbs {value - bit_};
+					/*T bitAbs {value - bit_};
 					SizeType newByte {byte_ - (bitAbs / CHAR_BIT)};
 					bitAbs %= CHAR_BIT;
 
-					return {allocator_, newByte, static_cast<unsigned>(bitAbs)};
+					return {allocator_, newByte, static_cast<unsigned>(bit_ - (value % CHAR_BIT))};*/
+
+					SizeType newByte {byte_ - (value / CHAR_BIT)};
+					auto newBit = bit_;
+
+					T remaining = value % CHAR_BIT;
+					if (remaining > newBit) {
+						newBit += 8 - remaining;
+						newByte -= 1;
+					}
+					else {
+						newBit -= remaining;
+					}
+
+					return {allocator_, newByte, newBit};
 				}
 
 				bool operator==(SimpleMetaIterator const & other) const {
@@ -504,6 +558,10 @@ class alignas(alignment) BitmappedBlock
 			return array_.data() + getBlockPtrOffset(blockIndex);
 		}
 
+		Pointer getBlockPtr(SimpleMetaIterator const & iterator) {
+			return getBlockPtr(iterator.getByte() * CHAR_BIT + iterator.getBit());
+		}
+
 		SizeType getBlockPtrOffset(SizeType blockIndex) const {
 			return getMetaDataSize() + (blockIndex * blockSize);
 		}
@@ -532,6 +590,9 @@ class alignas(alignment) BitmappedBlock
 		}
 
 		void unsetMetaBit(SizeType metaIndex, unsigned metaBitIndex) {
+			if (metaIndex == 0) {
+				std::cout << "byte 0\n";
+			}
 			array_[metaIndex].unsetBit(metaBitIndex);
 		}
 
@@ -542,6 +603,7 @@ class alignas(alignment) BitmappedBlock
 
 		ArrayType   array_;
 		std::size_t lastInsertionMetaByte_;
+		SizeType    lastCount_;
 };
 
 

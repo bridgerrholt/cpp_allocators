@@ -146,7 +146,7 @@ class FullTimedTest
 			test.destruct();
 			results_[2] = getTime() - destructStart;
 
-			test.restart();
+			/*test.restart();
 
 			constructStart = getTime();
 			test.construct();
@@ -155,7 +155,7 @@ class FullTimedTest
 
 			destructStart = getTime();
 			test.destruct();
-			results_[2] += getTime() - destructStart;
+			results_[2] += getTime() - destructStart;*/
 
 
 			test.restart();
@@ -299,12 +299,18 @@ int main(int argc, char* argv[])
 			>;*/
 
 		using AllocatorType = BitmappedBlock<
-			VectorWrapper, 16 * 16, 1024 * 1024 * 2
+			VectorWrapper, 16 * 16, 1024 * 1024
 		>;
 
+		/*AllocatorType all {};
+		auto blk = all.allocate(32);
+		auto blk2 = all.allocate(50);
+		all.deallocate(blk);
+		all.deallocate(blk2);*/
 
-		using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
-		NewTestType newTest {"New", elementCount};
+
+		//using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
+		//NewTestType newTest {"New", elementCount};
 
 		using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 		AllocatorTestType allocatorTest {"Mine", elementCount};

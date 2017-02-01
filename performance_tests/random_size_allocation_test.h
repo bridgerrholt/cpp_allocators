@@ -36,11 +36,18 @@ class RandomSizeAllocationTest : public TestBase
 
 		void initialize() {
 			pointers_.reserve(elementCount_);
+			std::cout << allocator_.isEmpty() << '\n';
+			//allocator_.printMeta();
+			//std::cout << std::endl;
 		}
 
 		void construct() {
 			std::size_t j {0};
-			for (auto i : sizes_) {
+			//for (auto i : sizes_) {
+			std::size_t i;
+			for (std::size_t index {0}; index < sizes_.size(); ++index) {
+				i = sizes_[index];
+
 				auto temp = allocator_.allocate(i);
 
 				if (temp.isNull()) {
@@ -66,7 +73,7 @@ class RandomSizeAllocationTest : public TestBase
 			sizes_ = {};
 
 			std::mt19937 randomEngine {
-				static_cast<typename std::mt19937::result_type>(getTime())
+				static_cast<typename std::mt19937::result_type>(/*getTime()*/0)
 			};
 			std::normal_distribution<> distribution {0, 128};
 
