@@ -3,7 +3,7 @@
 
 #define BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_ALLOCATION
 #define BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_DEALLOCATION
-#define BRIDGERRHOLT_BITMAPPED_BLOCK_USE_ITERATOR
+//#define BRIDGERRHOLT_BITMAPPED_BLOCK_USE_ITERATOR
 
 #include <vector>
 #include <bitset>
@@ -108,8 +108,7 @@ class alignas(alignment) BitmappedBlock
 
 		BitmappedBlock(ArrayType array) :
 			array_                 {std::move(array)},
-			lastInsertionMetaByte_ {0},
-			lastCount_             {0} {
+			lastInsertionMetaByte_ {0} {
 
 			std::cout << "BitmappedBlock()\n";
 
@@ -178,8 +177,6 @@ class alignas(alignment) BitmappedBlock
 					++count;
 			}
 
-			lastCount_ = count;
-
 			return count;
 		}
 
@@ -212,8 +209,6 @@ class alignas(alignment) BitmappedBlock
 			auto i = metaBegin();
 
 			do {
-				++blocksSearched;
-
 				if (i.get() == 0) {
 					++currentRegionSize;
 
@@ -224,7 +219,6 @@ class alignas(alignment) BitmappedBlock
 
 						auto iterator = iteratorStart;
 
-						auto countBefore = lastCount_;
 						while (iterator != i) {
 							iterator.set();
 
@@ -253,7 +247,7 @@ class alignas(alignment) BitmappedBlock
 					currentRegionSize = 0;
 				}
 
-				//std::cout << blocksSearched << " " << blockCount << '\n';
+				++blocksSearched;
 				if (blocksSearched == blockCount)
 					return RawBlock::makeNullBlock();
 
@@ -286,6 +280,7 @@ class alignas(alignment) BitmappedBlock
 							}
 
 #ifdef BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_ALLOCATION
+							// index should be 1 past lastIndex.
 							if (index == blockCount)
 								lastInsertionMetaByte_ = 0;
 							else
@@ -322,20 +317,14 @@ class alignas(alignment) BitmappedBlock
 			auto ptr = static_cast<Pointer>(block.getPtr());
 
 			// The amount of blocks it takes up.
-			std::size_t blocks     {block.getSize() / blockSize};
+			std::size_t blocks          {block.getSize() / blockSize};
 			std::size_t blockIndexStart {getBlockIndex(ptr)};
-			std::size_t objectEnd  {blockIndexStart + blocks};
-
-			if (blocks > 1) {
-				std::cout << "";
-			}
-
-			auto countBefore = lastCount_;
+			std::size_t objectEnd       {blockIndexStart + blocks};
 
 			std::size_t blockIndex {blockIndexStart};
 			while (blockIndex < objectEnd) {
-				if (getMetaBit(blockIndex) != 1)
-					throw std::runtime_error("Bad deallocate");
+				/*if (getMetaBit(blockIndex) != 1)
+					throw std::runtime_error("Bad deallocate");*/
 				unsetMetaBit(blockIndex);
 
 				++blockIndex;
@@ -369,7 +358,7 @@ class alignas(alignment) BitmappedBlock
 
 
 	private:
-		using Pointer      = ElementType *;
+		using Pointer      = ElementType       *;
 		using ConstPointer = ElementType const *;
 
 		class SimpleMetaIterator {
@@ -414,12 +403,6 @@ class alignas(alignment) BitmappedBlock
 
 				template <class T>
 				SimpleMetaIterator operator-(T value) const {
-					/*T bitAbs {value - bit_};
-					SizeType newByte {byte_ - (bitAbs / CHAR_BIT)};
-					bitAbs %= CHAR_BIT;
-
-					return {allocator_, newByte, static_cast<unsigned>(bit_ - (value % CHAR_BIT))};*/
-
 					SizeType newByte {byte_ - (value / CHAR_BIT)};
 					auto newBit = bit_;
 
@@ -590,20 +573,17 @@ class alignas(alignment) BitmappedBlock
 		}
 
 		void unsetMetaBit(SizeType metaIndex, unsigned metaBitIndex) {
-			if (metaIndex == 0) {
-				std::cout << "byte 0\n";
-			}
 			array_[metaIndex].unsetBit(metaBitIndex);
 		}
 
 
+		// Calculates how efficiently memory space is used.
 		constexpr static double efficiency() {
 			return static_cast<double>(blockCount) / (getMetaDataSize() * CHAR_BIT);
 		}
 
 		ArrayType   array_;
 		std::size_t lastInsertionMetaByte_;
-		SizeType    lastCount_;
 };
 
 

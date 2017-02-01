@@ -36,7 +36,7 @@ class RandomSizeAllocationTest : public TestBase
 
 		void initialize() {
 			pointers_.reserve(elementCount_);
-			std::cout << allocator_.isEmpty() << '\n';
+			//std::cout << allocator_.isEmpty() << '\n';
 			//allocator_.printMeta();
 			//std::cout << std::endl;
 		}
