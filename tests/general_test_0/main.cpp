@@ -10,6 +10,7 @@
 #include <allocators/bitmapped_block.h>
 #include <allocators/free_list.h>
 #include <allocators/full_free_list.h>
+#include <allocators/stack_allocator.h>
 
 
 class Base
@@ -63,30 +64,33 @@ int main() {
 	using namespace bridgerrholt::allocators;
 
 	using Type = A;
-	using BaseAllocator = FullFreeList<std::array, sizeof(Type), 8>;
-	using AllocatorType = BlockAllocatorWrapper<BaseAllocator>;
+	using TypeArray = std::array<A, 10>;
+	using BaseAllocator = StackAllocator<std::array, sizeof(Type) * 1024>;
+	using AllocatorType = SmartAllocator<BaseAllocator>;
 
 	AllocatorType allocator;
 
-	Type * arr[9];
+	std::size_t const size {8};
+	BasicBlock<Type> arr[size];
 
-	for (std::size_t i {0}; i < 8; ++i) {
+	for (std::size_t i {0}; i < size; ++i) {
 		arr[i] = allocator.construct<Type>();
-		std::cout << i << ": " << arr[i] << '\n';
+		std::cout << i << ": " << arr[i].getPtr() << '\n';
 	}
 
-	allocator.destruct(arr[3]);
-	allocator.destruct(arr[5]);
-	allocator.destruct(arr[1]);
-	arr[3] = allocator.construct<Type>();
-	arr[5] = allocator.construct<Type>();
-	arr[1] = allocator.construct<Type>();
+	allocator.destruct(arr[size-1]);
+	arr[size-1] = allocator.construct<Type>();
+
+	auto temp = allocator.construct<TypeArray>();
+	std::cout << temp.getPtr() << '\n';
+	allocator.destruct(temp);
 
 	std::cout << std::endl;
 
-	for (std::size_t i {0}; i < 8; ++i) {
-		allocator.destruct(arr[i]);
-		std::cout << i << ": " << arr[i] << '\n';
+	for (std::size_t i {size}; i > 0; --i) {
+		std::size_t j = i - 1;
+		allocator.destruct(arr[j]);
+		std::cout << j << ": " << arr[j].getPtr() << '\n';
 	}
 
 

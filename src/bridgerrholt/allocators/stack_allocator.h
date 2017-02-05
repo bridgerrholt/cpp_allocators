@@ -1,9 +1,8 @@
 #ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_STACK_ALLOCATOR_H
 #define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_STACK_ALLOCATOR_H
 
-#include "../common_types.h"
-
-#include "../block.h"
+#include "common/common_types.h"
+#include "blocks/block.h"
 
 namespace bridgerrholt {
 	namespace allocators {
