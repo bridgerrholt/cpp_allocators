@@ -1,13 +1,13 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_BLOCK_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_BLOCK_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BLOCKS_BLOCK_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BLOCKS_BLOCK_H
 
 #include <type_traits>
 #include <utility>
 
-#include "common_types.h"
+#include "../common/common_types.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
+	namespace allocators {
 
 class BlockBase
 {

@@ -1,13 +1,13 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_CONSTRUCT_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_CONSTRUCT_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_WRAPPERS_ALLOCATOR_WRAPPER_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_WRAPPERS_ALLOCATOR_WRAPPER_H
 
 #include <utility>
 #include <stdexcept>
 
-#include "block.h"
+#include "../blocks/block.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
+	namespace allocators {
 
 template <class Allocator>
 class AllocatorWrapper : public Allocator

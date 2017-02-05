@@ -1,13 +1,24 @@
 cmake_minimum_required(VERSION 3.6)
-project(cpp_allocator_test)
+project(brh_cpp_allocators)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_subdirectory("performance_tests")
+option(use_tests "Whether tests should be used or not" ON)
 
-include_directories("D:/Bridger/Documents/Programming/C++/_libs/boost_1_62_0")
+set(allocators_include "${CMAKE_SOURCE_DIR}/src/bridgerrholt")
 
-set(SOURCE_FILES src/main.cpp src/bridgerrholt/allocator_test/allocators/fallback_allocator.h src/bridgerrholt/allocator_test/block.h src/bridgerrholt/allocator_test/block.cpp src/bridgerrholt/allocator_test/common_types.h src/bridgerrholt/allocator_test/allocators/stack_allocator.h src/bridgerrholt/allocator_test/allocator_wrapper.h src/bridgerrholt/allocator_test/allocators/malloc_allocator.h src/bridgerrholt/allocator_test/allocator_singleton.h src/bridgerrholt/allocator_test/allocators/segregator.h src/bridgerrholt/allocator_test/allocators/simple_allocator.h src/bridgerrholt/allocator_test/allocators/full_free_list.h src/bridgerrholt/allocator_test/allocators/bitmapped_block.h src/bridgerrholt/allocator_test/smart_allocator.h src/bridgerrholt/allocator_test/unique_block.h src/bridgerrholt/allocator_test/allocators/free_list.h src/bridgerrholt/allocator_test/allocators/common/free_list_node.h src/bridgerrholt/allocator_test/allocators/common/round_up_to_multiple.h)
-add_executable(cpp_allocator_test ${SOURCE_FILES})
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+find_package(Boost 1.32.0)
 
-target_link_libraries(cpp_allocator_test)
+include_directories(${Boost_INCLUDE_DIRS} ${allocators_include})
+
+set(brh_cpp_allocators_source_files)
+add_subdirectory(src)
+#add_library(brh_cpp_allocators ${brh_cpp_allocators_source_files})
+
+if(use_tests)
+    set(test_names)
+    add_subdirectory(tests)
+endif(use_tests)

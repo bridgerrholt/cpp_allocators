@@ -6,12 +6,12 @@
 #include <algorithm>
 #include <cassert>
 
-#include <allocator_test/smart_allocator.h>
-#include <allocator_test/allocators/bitmapped_block.h>
-#include <allocator_test/allocators/free_list.h>
-#include <allocator_test/allocators/full_free_list.h>
-#include <allocator_test/allocators/segregator.h>
-#include <allocator_test/allocators/fallback_allocator.h>
+#include <allocators/wrappers/smart_allocator.h>
+#include <allocators/bitmapped_block.h>
+#include <allocators/free_list.h>
+#include <allocators/full_free_list.h>
+#include <allocators/segregator.h>
+#include <allocators/fallback_allocator.h>
 
 #include "test_base.h"
 #include "random_size_allocation_test.h"
@@ -19,8 +19,8 @@
 
 
 namespace bridgerrholt {
-	namespace allocator_test {
-		namespace performance_tests {
+	namespace allocators {
+		namespace tests {
 
 class NewReturnTypeSimple
 {
@@ -215,9 +215,8 @@ runTests(std::vector<TestBase *> tests, std::size_t iterations) {
 int main(int argc, char* argv[])
 {
 	try {
-		using namespace bridgerrholt::allocator_test;
-		using namespace allocators;
-		using namespace performance_tests;
+		using namespace bridgerrholt::allocators;
+		using namespace tests;
 
 		/*using Type = long;
 		using AllocatorBaseType = BitmappedBlock<VectorWrapper, sizeof(Type), alignof(Type), alignof(Type)>;
@@ -283,24 +282,24 @@ int main(int argc, char* argv[])
 				>, SecondaryAllocator
 			>;*/
 
-		/*using SmallAllocator =
+		using SmallAllocator =
 			BitmappedBlock<
-				VectorWrapper, smallBlockSize, 100000
+				VectorWrapper, smallBlockSize, 1024 * 1024
 			>;
 
 		using LargeAllocator =
 		BitmappedBlock<
-			VectorWrapper, 16 * 16, 1024 * 1024 * 2
+			VectorWrapper, largeBlockSize*4, 1024 * 1024
 		>;
 
 		using AllocatorType =
 			Segregator<
 				SmallAllocator::blockSize, SmallAllocator, LargeAllocator
-			>;*/
+			>;
 
-		using AllocatorType = BitmappedBlock<
+		/*using AllocatorType = BitmappedBlock<
 			VectorWrapper, 16 * 16, 1024 * 1024
-		>;
+		>;*/
 
 		/*AllocatorType all {};
 		auto blk = all.allocate(32);
@@ -309,13 +308,13 @@ int main(int argc, char* argv[])
 		all.deallocate(blk2);*/
 
 
-		//using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
-		//NewTestType newTest {"New", elementCount};
+		using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
+		NewTestType newTest {"New", elementCount};
 
 		using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 		AllocatorTestType allocatorTest {"Mine", elementCount};
 
-		std::vector<TestBase *> tests { /*&newTest,*/ &allocatorTest };
+		std::vector<TestBase *> tests { &newTest, &allocatorTest };
 		auto testResults = runTests(tests, iterations);
 		std::vector<double> totals;
 		totals.resize(tests.size());

@@ -1,12 +1,12 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_STACK_ALLOCATOR_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_STACK_ALLOCATOR_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_STACK_ALLOCATOR_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_STACK_ALLOCATOR_H
 
 #include "../common_types.h"
 
 #include "../block.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
+	namespace allocators {
 
 template <SizeType stackSize>
 class StackAllocator

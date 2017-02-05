@@ -1,12 +1,12 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_ALLOCATOR_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_ALLOCATOR_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FALLBACK_ALLOCATOR_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FALLBACK_ALLOCATOR_H
 
-#include "../common_types.h"
+#include "common/common_types.h"
 
-#include "../block.h"
+#include "blocks/block.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
+	namespace allocators {
 
 template <class Primary, class Fallback>
 class FallbackAllocator : private Primary,

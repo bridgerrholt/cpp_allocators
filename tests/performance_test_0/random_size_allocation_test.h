@@ -1,5 +1,5 @@
-#ifndef CPP_ALLOCATOR_TEST_PERFORMANCE_TESTS_RANDOM_SIZE_ALLOCATION_TEST_H
-#define CPP_ALLOCATOR_TEST_PERFORMANCE_TESTS_RANDOM_SIZE_ALLOCATION_TEST_H
+#ifndef BRH_CPP_ALLOCATORS_TESTS_PERFORMANCE_TEST_0_RANDOM_SIZE_ALLOCATION_TEST_H
+#define BRH_CPP_ALLOCATORS_TESTS_PERFORMANCE_TEST_0_RANDOM_SIZE_ALLOCATION_TEST_H
 
 #include <random>
 
@@ -7,8 +7,8 @@
 #include "get_time.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
-		namespace performance_tests {
+	namespace allocators {
+		namespace tests {
 
 template <class Allocator, class BlockType>
 class RandomSizeAllocationTest : public TestBase

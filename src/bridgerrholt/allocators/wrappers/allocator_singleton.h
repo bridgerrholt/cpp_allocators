@@ -1,11 +1,11 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATOR_SINGLETON_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATOR_SINGLETON_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_WRAPPERS_ALLOCATOR_SINGLETON_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_WRAPPERS_ALLOCATOR_SINGLETON_H
 
 #include "allocator_wrapper.h"
-#include "block.h"
+#include "../blocks/block.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
+	namespace allocators {
 
 template <class Allocator>
 class AllocatorSingleton : public AllocatorWrapper<Allocator>
@@ -30,7 +30,7 @@ template <class Allocator, class T>
 class SmartBlockSingleton : public BasicBlock<T>
 {
 	public:
-		SmartBlockSingleton(GenericPtr ptr, SizeType size) : BasicBlock<T>(ptr, size) {}
+		SmartBlockSingleton(void * ptr, SizeType size) : BasicBlock<T>(ptr, size) {}
 		SmartBlockSingleton(RawBlock block) :
 			BasicBlock<T>(block.getPtr(), block.getSize()) {}
 

@@ -1,8 +1,8 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_BITMAPPED_BLOCK_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_BITMAPPED_BLOCK_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BITMAPPED_BLOCK_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BITMAPPED_BLOCK_H
 
 #define BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_ALLOCATION
-#define BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_DEALLOCATION
+//#define BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_DEALLOCATION
 //#define BRIDGERRHOLT_BITMAPPED_BLOCK_USE_ITERATOR
 
 #include <vector>
@@ -13,13 +13,12 @@
 
 #include <boost/integer.hpp>
 
-#include "../common_types.h"
-#include "../allocator_wrapper.h"
+#include "common/common_types.h"
+#include "wrappers/allocator_wrapper.h"
 #include "common/round_up_to_multiple.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
-		namespace allocators {
+	namespace allocators {
 
 template <std::size_t requestedSize>
 class BitmappedBlockArrayElement
@@ -89,8 +88,8 @@ class alignas(alignment) BitmappedBlock
 
 			// The meta data size must be a multiple of the alignment so that
 			// the storage is also aligned.
-			// Note: This shouldn't be a problem because ElementType should be
-			// a multiple of the alignment anyway.
+			// Note: This shouldn't be a problem because elementSize should be
+			// a factor of the alignment anyway.
 			toReturn = common::roundUpToMultiple(toReturn, alignment);
 
 			return toReturn;
@@ -620,7 +619,6 @@ BitmappedBlock<
   alignment>;
 
 
-		}
 	}
 }
 

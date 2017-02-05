@@ -2,14 +2,14 @@
 #include <memory>
 #include <array>
 
-#include "bridgerrholt/allocator_test/allocator_wrapper.h"
-#include "bridgerrholt/allocator_test/allocator_singleton.h"
-#include "bridgerrholt/allocator_test/smart_allocator.h"
+#include <allocators/wrappers/allocator_wrapper.h>
+#include <allocators/wrappers/allocator_singleton.h>
+#include <allocators/wrappers/smart_allocator.h>
 
-#include "bridgerrholt/allocator_test/allocators/malloc_allocator.h"
-#include "bridgerrholt/allocator_test/allocators/bitmapped_block.h"
-#include "bridgerrholt/allocator_test/allocators/free_list.h"
-#include "bridgerrholt/allocator_test/allocators/full_free_list.h"
+#include <allocators/malloc_allocator.h>
+#include <allocators/bitmapped_block.h>
+#include <allocators/free_list.h>
+#include <allocators/full_free_list.h>
 
 
 class Base
@@ -60,8 +60,7 @@ class B : public Base
 
 
 int main() {
-	using namespace bridgerrholt::allocator_test;
-	using namespace bridgerrholt::allocator_test::allocators;
+	using namespace bridgerrholt::allocators;
 
 	using Type = A;
 	using BaseAllocator = FullFreeList<std::array, sizeof(Type), 8>;

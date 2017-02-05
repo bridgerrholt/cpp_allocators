@@ -1,18 +1,17 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_FREE_LIST_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_FREE_LIST_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FREE_LIST_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FREE_LIST_H
 
 #include <vector>
 #include <bitset>
 #include <cstddef>
 
 #include "common/free_list_node.h"
+#include "common/common_types.h"
 
-#include "../common_types.h"
-#include "../block.h"
+#include "blocks/block.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
-		namespace allocators {
+	namespace allocators {
 
 template <class Allocator, SizeType blockSize>
 class FreeList
@@ -95,7 +94,6 @@ class FreeList
 };
 
 
-		}
 	}
 }
 

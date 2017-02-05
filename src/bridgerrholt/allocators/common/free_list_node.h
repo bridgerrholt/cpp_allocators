@@ -1,10 +1,9 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_COMMON_FREE_LIST_NODE_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_COMMON_FREE_LIST_NODE_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_COMMON_FREE_LIST_NODE_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_COMMON_FREE_LIST_NODE_H
 
 namespace bridgerrholt {
-	namespace allocator_test {
-		namespace allocators {
-			namespace common {
+	namespace allocators {
+		namespace common {
 
 /// A simple POD node for singly-linked free lists. Should not be
 /// used directly, use through @ref FreeListNodeView instead.
@@ -59,7 +58,6 @@ class FreeListNodeView
 };
 
 
-			}
 		}
 	}
 }

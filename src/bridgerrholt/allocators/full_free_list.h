@@ -1,16 +1,15 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_SEGREGATED_STORAGE_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_SEGREGATED_STORAGE_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FULL_FREE_LIST_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FULL_FREE_LIST_H
 
 #include <vector>
 #include <type_traits>
 
 #include "common/free_list_node.h"
 
-#include "../common_types.h"
+#include "common/common_types.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
-		namespace allocators {
+	namespace allocators {
 
 constexpr std::size_t minimumFreeListArrayElementSize {
 	sizeof(std::uintptr_t)
@@ -199,7 +198,6 @@ FullFreeList
 };
 
 
-		}
 	}
 }
 

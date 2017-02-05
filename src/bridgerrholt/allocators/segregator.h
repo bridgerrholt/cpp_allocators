@@ -1,12 +1,11 @@
-#ifndef BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_SEGREGATOR_H
-#define BRIDGERRHOLT_ALLOCATOR_TEST_ALLOCATORS_SEGREGATOR_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_SEGREGATOR_H
+#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_SEGREGATOR_H
 
-#include "../common_types.h"
-#include "../block.h"
+#include "common/common_types.h"
+#include "blocks/block.h"
 
 namespace bridgerrholt {
-	namespace allocator_test {
-		namespace allocators {
+	namespace allocators {
 
 template <SizeType threshold,
 		      class    SmallAllocator,
@@ -76,7 +75,6 @@ class MaximumSizeAllocator : private Allocator
 };
 
 
-		}
 	}
 }
 
