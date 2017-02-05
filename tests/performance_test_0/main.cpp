@@ -282,19 +282,24 @@ int main(int argc, char* argv[])
 				>, SecondaryAllocator
 			>;*/
 
-		using SmallAllocator =
-			BitmappedBlock<
+		/*using SmallAllocator =
+			BitmappedBlockTemplate<
 				VectorWrapper, smallBlockSize, 1024 * 1024
 			>;
 
 		using LargeAllocator =
-		BitmappedBlock<
-			VectorWrapper, largeBlockSize*4, 1024 * 1024
-		>;
+			BitmappedBlockTemplate<
+				VectorWrapper, largeBlockSize*4, 1024 * 1024
+			>;
 
 		using AllocatorType =
 			Segregator<
 				SmallAllocator::blockSize, SmallAllocator, LargeAllocator
+			>;*/
+
+		using AllocatorType =
+			BitmappedBlockTemplate<
+				VectorWrapper, smallBlockSize, 1024 * 1024
 			>;
 
 		/*using AllocatorType = BitmappedBlock<
