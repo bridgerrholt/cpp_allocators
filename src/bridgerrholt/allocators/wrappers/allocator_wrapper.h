@@ -16,6 +16,9 @@ class AllocatorWrapper : public Allocator
 		template <class ... ArgTypes>
 		AllocatorWrapper(ArgTypes ... args) : Allocator {std::forward(args)...} {}
 
+		/// Constructs the template type using placement new and
+		/// the passed arguments.
+		/// Raw arrays are not supported (use std::array instead).
 		template <class T, class ... ArgTypes>
 		BasicBlock<T> construct(ArgTypes ... args) {
 			RawBlock block = Allocator::allocate(sizeof(T));
