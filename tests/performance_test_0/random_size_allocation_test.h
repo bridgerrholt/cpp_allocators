@@ -20,7 +20,7 @@ class RandomSizeAllocationTest : public TestBase
 			allocator_   {std::move(allocator)},
 			elementCount_{elementCount},
 			TestBase     {std::move(name)} {
-
+			std::cout << "A.2\n";
 			restart();
 
 
@@ -28,7 +28,9 @@ class RandomSizeAllocationTest : public TestBase
 
 
 		RandomSizeAllocationTest(std::string name, std::size_t elementCount) :
-			RandomSizeAllocationTest(name, Allocator {}, elementCount) {}
+			RandomSizeAllocationTest(name, Allocator {}, elementCount) {
+			std::cout << "A.1\n";
+		}
 
 		~RandomSizeAllocationTest() {
 			destruct();

@@ -82,6 +82,9 @@ class VectorWrapper : public std::vector<T>
 		VectorWrapper() : std::vector<T>(size) {}
 };
 
+template <class T>
+using VectorSingle = std::vector<T>;
+
 
 template <class Allocator, template <class> class BlockType, class T>
 class BasicTest : public TestBase
@@ -297,6 +300,12 @@ int main(int argc, char* argv[])
 				getBitmappedData<SmallAllocator>().getBlockSize(), SmallAllocator, LargeAllocator
 			>;
 
+		std::cout << sizeof(
+			BitmappedBlockTemplate<VectorWrapper, smallBlockSize, 128>
+		) << " " << sizeof(
+			BitmappedBlockRuntime<VectorSingle>
+		) << '\n';
+
 		/*using AllocatorType = BitmappedBlock<
 			VectorWrapper, 16 * 16, 1024 * 1024
 		>;*/
@@ -311,10 +320,13 @@ int main(int argc, char* argv[])
 		using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
 		NewTestType newTest {"New", elementCount};
 
+		std::cout << "A\n";
 		using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 		AllocatorTestType allocatorTest {"Mine", elementCount};
 
+		std::cout << "B\n";
 		std::vector<TestBase *> tests { &newTest, &allocatorTest };
+		std::cout << "C\n";
 		auto testResults = runTests(tests, iterations);
 		std::vector<double> totals;
 		totals.resize(tests.size());
