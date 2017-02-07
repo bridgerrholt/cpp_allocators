@@ -46,6 +46,7 @@ class BitmappedBlockArrayElement
 static_assert(std::is_pod<BitmappedBlockArrayElement>::value,
               "BitmappedBlockArrayElement should be POD");
 
+template <std::size_t> class BitmappedBlockData;
 
 using ElementType = BitmappedBlockArrayElement;
 static constexpr std::size_t elementSize {sizeof(ElementType)};
@@ -61,7 +62,7 @@ class alignas(PolicyT::alignment) BitmappedBlock
 		using Policy    = PolicyT;
 		using ArrayType = typename Policy::template ArrayType<ElementType>;
 
-
+		constexpr SizeType getBlockSize() const { return array_.getBlockSize(); }
 
 		//using ArrayType = Array<ElementType, getElementCount()>;
 
@@ -350,8 +351,8 @@ class alignas(PolicyT::alignment) BitmappedBlock
 				template <class T>
 				SimpleMetaIterator operator+(T value) const {
 					T newBit {static_cast<T>(bit_) + value};
-					SizeType newByte {byte_ + (newBit / BitmappedBlock::elementSizeBits)};
-					newBit %= BitmappedBlock::elementSizeBits;
+					SizeType newByte {byte_ + (newBit / elementSizeBits)};
+					newBit %= elementSizeBits;
 
 					/*std::cout << "(" << byte_ << " " << bit_ << ") + " << value <<
 					          " = (" << newByte << " " << newBit << ")\n";*/
@@ -361,10 +362,10 @@ class alignas(PolicyT::alignment) BitmappedBlock
 
 				template <class T>
 				SimpleMetaIterator operator-(T value) const {
-					SizeType newByte {byte_ - (value / BitmappedBlock::elementSizeBits)};
+					SizeType newByte {byte_ - (value / elementSizeBits)};
 					auto newBit = bit_;
 
-					T remaining = value % BitmappedBlock::elementSizeBits;
+					T remaining = value % elementSizeBits;
 					if (remaining > newBit) {
 						newBit += 8 - remaining;
 						newByte -= 1;
@@ -399,7 +400,7 @@ class alignas(PolicyT::alignment) BitmappedBlock
 				bool incrementBit() {
 					++bit_;
 
-					if (bit_ == BitmappedBlock::elementSizeBits) {
+					if (bit_ == elementSizeBits) {
 						bit_ = 0;
 						++byte_;
 						return false;
@@ -568,6 +569,8 @@ BitmappedBlock<
 
 
 
+
+
 template <std::size_t alignment>
 class BitmappedBlockData
 {
@@ -580,7 +583,7 @@ class BitmappedBlockData
 
 		//  Size access operations
 		// Returns the amount of bytes that the meta header data requires.
-		SizeType getMetaDataSize() const {
+		constexpr SizeType getMetaDataSize() const {
 			// Meta data overhead is 1 bit per block.
 			SizeType toReturn {
 				blockCount_ / elementSizeBits_
@@ -601,24 +604,23 @@ class BitmappedBlockData
 		}
 
 		// Returns the amount of bytes that the block list requires.
-		SizeType getStorageSize() const {
+		constexpr SizeType getStorageSize() const {
 			return blockSize_ * blockCount_;
 		}
 
 		// Returns the total amount of bytes required.
-		SizeType getTotalSize() const {
+		constexpr SizeType getTotalSize() const {
 			return getMetaDataSize() + getStorageSize();
 		}
 
-		SizeType getElementCount() const {
+		constexpr SizeType getElementCount() const {
 			return common::roundUpToMultiple(
 				getTotalSize(), elementSize_
 			) / elementSize_;
 		}
 
-		SizeType getBlockSize()  const { return blockSize_; }
-		SizeType getBlockCount() const { return blockCount_; }
-
+		constexpr SizeType getBlockSize()  const { return blockSize_; }
+		constexpr SizeType getBlockCount() const { return blockCount_; }
 
 
 	private:
@@ -654,7 +656,10 @@ template <template <class T, SizeType size> class ArrayType, class T,
 	SizeType minimumBlockSize,
 	SizeType blockCount,
 	std::size_t alignment>
-class ArrayTemplateWrapper
+class ArrayTemplateWrapper : public ArrayType<T,
+                                    BitmappedBlockData<alignment>(
+	                                    minimumBlockSize, blockCount
+                                    ).getElementCount()>
 {
 	public:
 		static_assert((minimumBlockSize % alignment == 0),
@@ -662,22 +667,18 @@ class ArrayTemplateWrapper
 
 		ArrayTemplateWrapper() {}
 
-		T       & operator[](SizeType i)       { return array_[i]; }
-		T const & operator[](SizeType i) const { return array_[i]; }
+		constexpr SizeType getMetaDataSize() const { return getData().getMetaDataSize(); }
+		constexpr SizeType getStorageSize()  const { return getData().getStorageSize(); }
+		constexpr SizeType getTotalSize()    const { return getData().getTotalSize(); }
+		constexpr SizeType getElementCount() const { return getData().getElementCount(); }
 
-		SizeType getMetaDataSize() const { return data_.getMetaDataSize(); }
-		SizeType getStorageSize()  const { return data_.getStorageSize(); }
-		SizeType getTotalSize()    const { return data_.getTotalSize(); }
-		SizeType getElementCount() const { return data_.getElementCount(); }
+		constexpr SizeType getBlockSize()  const { return getData().getBlockSize(); }
+		constexpr SizeType getBlockCount() const { return getData().getBlockCount(); }
 
-		SizeType getBlockSize()  const { return data_.getBlockSize(); }
-		SizeType getBlockCount() const { return data_.getBlockCount(); }
-
-	private:
 		static constexpr
-		BitmappedBlockData<alignment> data_ {minimumBlockSize, blockCount};
-
-		ArrayType<T, data_.getElementCount()> array_;
+		BitmappedBlockData<alignment> getData() {
+			return {minimumBlockSize, blockCount};
+		}
 };
 
 
@@ -690,25 +691,42 @@ class RuntimePolicy
 
 		template <class T>
 		using ArrayType = ArrayRuntimeWrapper<CoreArray, T, alignment>;
+
+		using DataType = BitmappedBlockData<alignment>;
+
+		RuntimePolicy(SizeType minimumBlockSize, SizeType blockCount) {
+
+		}
+
+		constexpr ArrayType makeArray() const {
+			return {
+		}
+
 };
 
 
 template <template <class T, SizeType size> class CoreArray,
-	std::size_t minimumBlockSize,
-	std::size_t blockCount,
+	SizeType    minimumBlockSize,
+	SizeType    blockCount,
 	std::size_t t_alignment>
 class TemplatePolicy
 {
 	public:
 		static constexpr std::size_t alignment {t_alignment};
 
-		template <class T>
 		using ArrayType = ArrayTemplateWrapper<
-			CoreArray, T, minimumBlockSize, blockCount, alignment
+			CoreArray, BitmappedBlockArrayElement, minimumBlockSize, blockCount, alignment
 		>;
 
-	private:
-		static constexpr BitmappedBlockData<alignment> data_ {minimumBlockSize, blockCount};
+		using DataType = BitmappedBlockData<alignment>;
+
+		constexpr ArrayType makeArray() const {
+			return {};
+		}
+
+		constexpr DataType makeData() const {
+			return {minimumBlockSize, blockCount};
+		}
 };
 
 
@@ -727,6 +745,11 @@ using BitmappedBlockTemplate =
 BitmappedBlock<TemplatePolicy<
 	CoreArray, minimumBlockSize, blockCount, alignment>
 >;
+
+template <class Allocator>
+constexpr BitmappedBlockData<Allocator::Policy::alignment> getBitmappedData() {
+	return Allocator::ArrayType::getData();
+}
 
 
 	}
