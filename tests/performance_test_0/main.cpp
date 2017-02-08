@@ -214,144 +214,151 @@ runTests(std::vector<TestBase *> tests, std::size_t iterations) {
 }
 
 
+void runTests()
+{
+	using namespace bridgerrholt::allocators;
+	using namespace tests;
+
+	/*using Type = long;
+	using AllocatorBaseType = BitmappedBlock<VectorWrapper, sizeof(Type), alignof(Type), alignof(Type)>;
+	using AllocatorType = AllocatorWrapper<AllocatorBaseType>;
+
+	AllocatorType allocator;
+
+	allocator.printBits<Type>();
+
+	std::vector<BasicBlock<Type> > blocks;
+
+	for (Type i = 0; i < AllocatorBaseType::blockCount; ++i) {
+		blocks.emplace_back(allocator.construct<Type>(i + 1));
+		allocator.printBits<Type>();
+	}
+
+	std::cout << allocator.construct<Type>().getPtr() << '\n';
+	allocator.printBits<Type>();
+
+	for (auto i : blocks) {
+		allocator.destruct(i);
+		allocator.printBits<Type>();
+	}*/
+
+
+
+	std::size_t iterations {1000};
+	constexpr std::size_t elementCount {1'000};
+
+	constexpr std::size_t smallBlockSize {16};
+	constexpr std::size_t largeBlockSize {smallBlockSize * 4};
+	constexpr std::size_t blockCount     {elementCount};
+
+	/*using SmallAllocatorBase =
+		FullFreeList<
+			VectorWrapper, smallBlockSize, blockCount
+		>;
+
+	using SmallAllocator =
+		BlockAllocatorRegularInterface<
+			SmallAllocatorBase
+		>;
+
+	using LargeAllocatorBase =
+		FullFreeList<
+			VectorWrapper, largeBlockSize, blockCount
+		>;
+
+	using LargeAllocator =
+		BlockAllocatorRegularInterface<
+			LargeAllocatorBase
+		>;
+
+	using SecondaryAllocator =
+		BitmappedBlock<
+			VectorWrapper, largeBlockSize, 1024 * 1024
+		>;
+
+	using AllocatorType =
+		Segregator<
+			LargeAllocatorBase::blockSize, Segregator<
+				SmallAllocatorBase::blockSize, SmallAllocator, LargeAllocator
+			>, SecondaryAllocator
+		>;*/
+
+	using SmallAllocator =
+		BitmappedBlockTemplate<
+			VectorWrapper, smallBlockSize, 1024 * 1024
+		>;
+
+	using LargeAllocator =
+		BitmappedBlockTemplate<
+			VectorWrapper, largeBlockSize*4, 1024 * 512
+		>;
+
+	/*using AllocatorType =
+		Segregator<
+			getBitmappedData<SmallAllocator>().getBlockSize(), SmallAllocator, LargeAllocator
+		>;*/
+
+	using AllocatorType =
+		LargeAllocator;
+
+	using RuntimeAllocator =
+		BitmappedBlockRuntime<VectorSingle>;
+
+	/*using AllocatorType = BitmappedBlock<
+		VectorWrapper, 16 * 16, 1024 * 1024
+	>;*/
+
+	/*AllocatorType all {};
+	auto blk = all.allocate(32);
+	auto blk2 = all.allocate(50);
+	all.deallocate(blk);
+	all.deallocate(blk2);*/
+
+
+	using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
+	NewTestType newTest {"C++ 'new'", elementCount};
+
+	using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
+	AllocatorTestType allocatorTest {"Template Bitmap", elementCount};
+
+	auto data = AllocatorType::Policy::getDataS();
+	using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
+	RuntimeTestType runtimeTest {"Runtime Bitmap", RuntimeAllocator({data.getBlockSize(), data.getBlockCount()}), elementCount};
+
+	std::vector<TestBase *> tests { /*&newTest, */&allocatorTest, &runtimeTest };
+	auto testResults = runTests(tests, iterations);
+	std::vector<double> totals;
+	totals.resize(tests.size());
+
+	for (std::size_t i {0}; i < testResults.size(); ++i) {
+		auto result = testResults[i];
+
+		totals[i] = std::accumulate(result.begin(),
+		                            result.end(), 0.0);
+
+		std::cout << '\n' <<
+      tests.at(i)->getName() << '\n' <<
+      "Initialize: " << result[0] << '\n' <<
+      "Construct:  " << result[1] << '\n' <<
+      "Destruct:   " << result[2] << '\n' <<
+      "Total:      " << totals[i] << "\n\n";
+	}
+
+	for (std::size_t i {0}; i < testResults.size(); ++i) {
+		for (std::size_t j {0}; j < testResults.size(); ++j) {
+			if (i == j) continue;
+
+			std::cout << tests[i]->getName() << " : " << tests[j]->getName() << " = " << totals[i] / totals[j] << '\n';
+		}
+		std::cout << '\n';
+	}
+}
+
 
 int main(int argc, char* argv[])
 {
 	try {
-		using namespace bridgerrholt::allocators;
-		using namespace tests;
-
-		/*using Type = long;
-		using AllocatorBaseType = BitmappedBlock<VectorWrapper, sizeof(Type), alignof(Type), alignof(Type)>;
-		using AllocatorType = AllocatorWrapper<AllocatorBaseType>;
-
-		AllocatorType allocator;
-
-		allocator.printBits<Type>();
-
-		std::vector<BasicBlock<Type> > blocks;
-
-		for (Type i = 0; i < AllocatorBaseType::blockCount; ++i) {
-			blocks.emplace_back(allocator.construct<Type>(i + 1));
-			allocator.printBits<Type>();
-		}
-
-		std::cout << allocator.construct<Type>().getPtr() << '\n';
-		allocator.printBits<Type>();
-
-		for (auto i : blocks) {
-			allocator.destruct(i);
-			allocator.printBits<Type>();
-		}*/
-
-
-
-		std::size_t iterations {1000};
-		constexpr std::size_t elementCount {1'000};
-
-		constexpr std::size_t smallBlockSize {16};
-		constexpr std::size_t largeBlockSize {smallBlockSize * 4};
-		constexpr std::size_t blockCount     {elementCount};
-
-		/*using SmallAllocatorBase =
-			FullFreeList<
-				VectorWrapper, smallBlockSize, blockCount
-			>;
-
-		using SmallAllocator =
-			BlockAllocatorRegularInterface<
-				SmallAllocatorBase
-			>;
-
-		using LargeAllocatorBase =
-			FullFreeList<
-				VectorWrapper, largeBlockSize, blockCount
-			>;
-
-		using LargeAllocator =
-			BlockAllocatorRegularInterface<
-				LargeAllocatorBase
-			>;
-
-		using SecondaryAllocator =
-			BitmappedBlock<
-				VectorWrapper, largeBlockSize, 1024 * 1024
-			>;
-
-		using AllocatorType =
-			Segregator<
-				LargeAllocatorBase::blockSize, Segregator<
-					SmallAllocatorBase::blockSize, SmallAllocator, LargeAllocator
-				>, SecondaryAllocator
-			>;*/
-
-		using SmallAllocator =
-			BitmappedBlockTemplate<
-				VectorWrapper, smallBlockSize, 1024 * 1024
-			>;
-
-		using LargeAllocator =
-			BitmappedBlockTemplate<
-				VectorWrapper, largeBlockSize*4, 1024 * 1024
-			>;
-
-		using AllocatorType =
-			Segregator<
-				getBitmappedData<SmallAllocator>().getBlockSize(), SmallAllocator, LargeAllocator
-			>;
-
-		std::cout << sizeof(
-			BitmappedBlockTemplate<VectorWrapper, smallBlockSize, 128>
-		) << " " << sizeof(
-			BitmappedBlockRuntime<VectorSingle>
-		) << '\n';
-
-		/*using AllocatorType = BitmappedBlock<
-			VectorWrapper, 16 * 16, 1024 * 1024
-		>;*/
-
-		/*AllocatorType all {};
-		auto blk = all.allocate(32);
-		auto blk2 = all.allocate(50);
-		all.deallocate(blk);
-		all.deallocate(blk2);*/
-
-
-		using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
-		NewTestType newTest {"New", elementCount};
-
-		std::cout << "A\n";
-		using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
-		AllocatorTestType allocatorTest {"Mine", elementCount};
-
-		std::cout << "B\n";
-		std::vector<TestBase *> tests { &newTest, &allocatorTest };
-		std::cout << "C\n";
-		auto testResults = runTests(tests, iterations);
-		std::vector<double> totals;
-		totals.resize(tests.size());
-
-		for (std::size_t i {0}; i < testResults.size(); ++i) {
-			auto result = testResults[i];
-
-			totals[i] = std::accumulate(result.begin(),
-			                            result.end(), 0.0);
-
-			std::cout <<
-        tests.at(i)->getName() << '\n' <<
-        "Initialize: " << result[0] << '\n' <<
-        "Construct:  " << result[1] << '\n' <<
-        "Destruct:   " << result[2] << '\n' <<
-        "Total:      " << totals[i] << "\n\n";
-		}
-
-		for (std::size_t i {0}; i < testResults.size(); ++i) {
-			for (std::size_t j {0}; j < testResults.size(); ++j) {
-				if (i == j) continue;
-
-				std::cout << tests[i]->getName() << " : " << tests[j]->getName() << " = " << totals[i] / totals[j] << '\n';
-			}
-		}
+		runTests();
 	}
 	catch (std::exception & e) {
 		std::cout << "Main caught: " << e.what() << '\n';
