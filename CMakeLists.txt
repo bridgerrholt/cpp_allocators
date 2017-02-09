@@ -7,12 +7,13 @@ option(use_tests "Whether tests should be used or not" ON)
 
 set(allocators_include "${CMAKE_SOURCE_DIR}/src/bridgerrholt")
 
-set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost)
+#set(Boost_USE_STATIC_LIBS OFF)
+#set(Boost_USE_MULTITHREADED ON)
+#set(Boost_USE_STATIC_RUNTIME OFF)
+#find_package(Boost)
 
-include_directories(${Boost_INCLUDE_DIRS} ${allocators_include})
+#include_directories(${Boost_INCLUDE_DIRS} ${allocators_include})
+include_directories(${allocators_include})
 
 set(brh_cpp_allocators_source_files)
 add_subdirectory(src)

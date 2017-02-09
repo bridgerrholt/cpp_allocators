@@ -321,10 +321,9 @@ void runTests()
 	using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 	AllocatorTestType allocatorTest {"Template Bitmap", elementCount};
 
-	auto data = AllocatorType::Policy::getData();
 	using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
-	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({data.getBlockSize(), data.getBlockCount()}), elementCount};
-	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, data.getBlockCount() * 8}), elementCount};
+	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getBlockSize(), AllocatorType::Policy::getBlockCount()}), elementCount};
+	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};
 
 	std::vector<TestBase *> tests { /*&newTest, */&allocatorTest, &runtimeTest1, &runtimeTest2 };
 	auto testResults = runTests(tests, iterations);
