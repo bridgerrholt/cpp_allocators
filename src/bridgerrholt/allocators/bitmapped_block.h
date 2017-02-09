@@ -4,6 +4,7 @@
 #define BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_ALLOCATION
 //#define BRIDGERRHOLT_BITMAPPED_BLOCK_SET_NEXT_BYTE_DEALLOCATION
 
+#include <iostream>
 #include <vector>
 #include <bitset>
 #include <cstddef>
@@ -73,16 +74,16 @@ class alignas(t_Policy::alignment) BitmappedBlock : private t_Policy
 		}
 
 		BitmappedBlock() : BitmappedBlock(Policy {}) {
-			std::cout << "BitmappedBlock()\n";
+			//std::cout << "BitmappedBlock()\n";
 		}
 
 		constexpr BitmappedBlock(Policy policy) :
 			Policy                 {std::move(policy)},
 			lastInsertionMetaByte_ {0} {
 
-			std::cout << "BitmappedBlock(Policy) " << noexcept(this->getData().getBlockSize()) << "\n";
+			//std::cout << "BitmappedBlock(Policy) " << noexcept(this->getData().getBlockSize()) << "\n";
 
-			auto const end = this->getData().getMetaDataSize();
+			auto const end = Policy::getData().getMetaDataSize();
 			for (std::size_t i = 0; i < end; ++i) {
 				this->getArray()[i].clearBits();
 			}
@@ -99,7 +100,7 @@ class alignas(t_Policy::alignment) BitmappedBlock : private t_Policy
 		}
 
 		BitmappedBlock(BitmappedBlock && other) : Policy(static_cast<Policy>(other)) {
-			std::cout << "BitmappedBlock(BitmappedBlock &&)\n";
+			//std::cout << "BitmappedBlock(BitmappedBlock &&)\n";
 			swap(*this, other);
 		}
 
@@ -405,6 +406,25 @@ class BitmappedBlockData
 		constexpr SizeType getBlockCount() const { return blockCount_; }
 
 
+		/*template <BitmappedBlockData d>
+		static constexpr SizeType getMetaDataSize() { return d.getMetaDataSize(); }
+
+		template <BitmappedBlockData d>
+		static constexpr SizeType getStorageSize() { return d.getStorageSize(); }
+
+		template <BitmappedBlockData d>
+		static constexpr SizeType getTotalSize() { return d.getTotalSize(); }
+
+		template <BitmappedBlockData d>
+		static constexpr SizeType getElementCount() { return d.getElementCount(); }
+
+		template <BitmappedBlockData d>
+		static constexpr SizeType getBlockSize()  { return d.getBlockSize(); }
+
+		template <BitmappedBlockData d>
+		static constexpr SizeType getBlockCount() { return d.getBlockCount(); }*/
+
+
 	private:
 		SizeType blockSize_;
 		SizeType blockCount_;
@@ -490,6 +510,8 @@ class TemplatePolicy
 	public:
 		static constexpr std::size_t alignment {t_alignment};
 
+		constexpr TemplatePolicy() {}
+
 		using ArrayType = ArrayTemplateWrapper<
 			CoreArray, BitmappedBlockArrayElement, minimumBlockSize, blockCount, alignment
 		>;
@@ -498,22 +520,29 @@ class TemplatePolicy
 
 		using ArrayReturn      = ArrayType &;
 		using ArrayConstReturn = ArrayType const &;
-		using DataReturn       = DataType  const;
+		using DataReturn       = DataType  const &;
 
 		ArrayReturn      getArray()       { return array_; }
 		ArrayConstReturn getArray() const { return array_; }
 
 		static constexpr DataReturn getData() {
-			return {minimumBlockSize, blockCount};
-		}
-
-		static constexpr DataReturn getDataS() {
-			return {minimumBlockSize, blockCount};
+			//return {minimumBlockSize, blockCount};
+			return data_;
 		}
 
 	private:
 		ArrayType array_;
+
+		static constexpr DataType data_ {minimumBlockSize, blockCount};
 };
+
+template <
+	template <class, SizeType> class A,
+	SizeType    m,
+	SizeType    c,
+	std::size_t a>
+typename TemplatePolicy<A, m, c, a>::DataType constexpr
+TemplatePolicy<A, m, c, a>::data_;
 
 
 

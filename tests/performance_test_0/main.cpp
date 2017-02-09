@@ -79,7 +79,7 @@ template <class T, std::size_t size>
 class VectorWrapper : public std::vector<T>
 {
 	public:
-		VectorWrapper() : std::vector<T>(size) {}
+		VectorWrapper() : std::vector<T>() { std::vector<T>::reserve(size); }
 };
 
 template <class T>
@@ -321,11 +321,12 @@ void runTests()
 	using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 	AllocatorTestType allocatorTest {"Template Bitmap", elementCount};
 
-	auto data = AllocatorType::Policy::getDataS();
+	auto data = AllocatorType::Policy::getData();
 	using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
-	RuntimeTestType runtimeTest {"Runtime Bitmap", RuntimeAllocator({data.getBlockSize(), data.getBlockCount()}), elementCount};
+	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({data.getBlockSize(), data.getBlockCount()}), elementCount};
+	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, data.getBlockCount() * 8}), elementCount};
 
-	std::vector<TestBase *> tests { /*&newTest, */&allocatorTest, &runtimeTest };
+	std::vector<TestBase *> tests { /*&newTest, */&allocatorTest, &runtimeTest1, &runtimeTest2 };
 	auto testResults = runTests(tests, iterations);
 	std::vector<double> totals;
 	totals.resize(tests.size());
