@@ -284,12 +284,12 @@ void runTests()
 		>;*/
 
 	using SmallAllocator =
-		BitmappedBlockTemplate<
+		BitmappedBlock::Templated<
 			VectorWrapper, smallBlockSize, 1024 * 1024
 		>;
 
 	using LargeAllocator =
-		BitmappedBlockTemplate<
+		BitmappedBlock::Templated<
 			VectorWrapper, largeBlockSize*4, 1024 * 512
 		>;
 
@@ -302,7 +302,7 @@ void runTests()
 		LargeAllocator;
 
 	using RuntimeAllocator =
-		BitmappedBlockRuntime<VectorSingle>;
+		BitmappedBlock::Runtime<VectorSingle>;
 
 	/*using AllocatorType = BitmappedBlock<
 		VectorWrapper, 16 * 16, 1024 * 1024
