@@ -24,7 +24,7 @@ class BasicSegregator : private t_Policy,
 			LargeAllocator(large) {}
 
 		RawBlock allocate(SizeType size) {
-			if (size <= threshold) {
+			if (size <= Policy::getThreshold()) {
 				/*static std::size_t smallCount = 0;
 				smallCount++;
 				std::cout << "Small: " << smallCount << '\n';*/
@@ -39,7 +39,7 @@ class BasicSegregator : private t_Policy,
 		}
 
 		void deallocate(RawBlock block) {
-			if (block.getSize() <= threshold)
+			if (block.getSize() <= Policy::getThreshold())
 				SmallAllocator::deallocate(block);
 
 			else
@@ -69,6 +69,16 @@ class Segregator
 			public:
 				static constexpr SizeType getThreshold() { return threshold; }
 		};
+
+		template <class SmallAllocator, class LargeAllocator>
+		using Runtime =
+			BasicSegregator<RuntimePolicy, SmallAllocator, LargeAllocator>;
+
+		template <class SmallAllocator, class LargeAllocator, SizeType threshold>
+		using Templated =
+			BasicSegregator<
+				TemplatedPolicy<threshold>, SmallAllocator, LargeAllocator>;
+
 };
 
 

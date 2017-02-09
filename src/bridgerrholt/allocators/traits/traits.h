@@ -12,6 +12,12 @@ class RuntimeSizedArray : public ArrayType<T>
 		RuntimeSizedArray(std::size_t size) : ArrayType<T> (size) {}
 };
 
+template <class ArrayType>
+class ArrayPolicyBase
+{
+
+};
+
 		}
 	}
 }

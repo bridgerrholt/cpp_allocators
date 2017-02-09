@@ -22,7 +22,7 @@ class BasicStackAllocator : private t_Policy
 		RawBlock allocate(SizeType size) {
 			if (size == 0) size = 1;
 
-			if (getEnd() - size >= next_) {
+			if (next_ <= getEnd() - size) {
 				RawBlock toReturn {next_, size};
 				next_ += size;
 				return toReturn;

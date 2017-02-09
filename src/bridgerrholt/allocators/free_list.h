@@ -14,7 +14,7 @@ namespace bridgerrholt {
 	namespace allocators {
 
 template <class Allocator, SizeType blockSize>
-class FreeList
+class InternalFreeList
 {
 	public:
 		static_assert(blockSize >= sizeof(std::uintptr_t),
@@ -22,22 +22,22 @@ class FreeList
 
 		using ByteType  = unsigned char;
 
-		friend void swap(FreeList & first, FreeList & second) {
+		friend void swap(InternalFreeList & first, InternalFreeList & second) {
 			using std::swap;
 
 			swap(first.parent_, second.parent_);
 			swap(first.root_,   second.root_);
 		}
 
-		FreeList() {
+		InternalFreeList() {
 
 		}
 
-		FreeList(Allocator parent) : parent_ {parent} {
+		InternalFreeList(Allocator parent) : parent_ {parent} {
 
 		}
 
-		FreeList(FreeList && other) : FreeList {} {
+		InternalFreeList(InternalFreeList && other) : InternalFreeList {} {
 			swap(*this, other);
 		}
 

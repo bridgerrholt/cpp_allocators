@@ -293,6 +293,13 @@ void runTests()
 			VectorWrapper, largeBlockSize*4, 1024 * 512
 		>;
 
+	using SemiFreeListAllocator =
+		Segregator::Templated<
+			BlockAllocatorRegularInterface<FullFreeList::Templated<
+				VectorWrapper, largeBlockSize, 1024 * 512>>,
+			LargeAllocator, largeBlockSize
+		>;
+
 	/*using AllocatorType =
 		Segregator<
 			getBitmappedData<SmallAllocator>().getBlockSize(), SmallAllocator, LargeAllocator
@@ -321,11 +328,14 @@ void runTests()
 	using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 	AllocatorTestType allocatorTest {"Template Bitmap", elementCount};
 
-	using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
-	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getBlockSize(), AllocatorType::Policy::getBlockCount()}), elementCount};
-	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};
+	using SemiFreeListTestType = RandomSizeAllocationTest<SemiFreeListAllocator, AllocatorReturnTypeSimple>;
+	SemiFreeListTestType freeListTest {"Semi- Free List", elementCount};
 
-	std::vector<TestBase *> tests { /*&newTest, */&allocatorTest, &runtimeTest1, &runtimeTest2 };
+	/*using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
+	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getBlockSize(), AllocatorType::Policy::getBlockCount()}), elementCount};
+	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};*/
+
+	std::vector<TestBase *> tests { &newTest, &allocatorTest, &freeListTest /*, &runtimeTest1, &runtimeTest2*/ };
 	auto testResults = runTests(tests, iterations);
 	std::vector<double> totals;
 	totals.resize(tests.size());

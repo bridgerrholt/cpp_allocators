@@ -515,7 +515,7 @@ class BitmappedBlock
 			std::size_t blockCount,
 			std::size_t alignment = alignof(std::max_align_t)>
 		using Templated =
-		BasicBitmappedBlock<TemplatePolicy<
+		BasicBitmappedBlock<TemplatedPolicy<
 		                    CoreArray, minimumBlockSize, blockCount, alignment>
 		>;
 };
