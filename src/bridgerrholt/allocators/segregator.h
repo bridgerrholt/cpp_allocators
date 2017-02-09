@@ -7,16 +7,19 @@
 namespace bridgerrholt {
 	namespace allocators {
 
-template <SizeType threshold,
-		      class    SmallAllocator,
-		      class    LargeAllocator>
-class Segregator : private SmallAllocator,
-                   private LargeAllocator
+template <class t_Policy,
+	        class SmallAllocator,
+		      class LargeAllocator>
+class BasicSegregator : private t_Policy,
+                        private SmallAllocator,
+                        private LargeAllocator
 {
 	public:
-		Segregator() {}
+		using Policy = t_Policy;
 
-		Segregator(SmallAllocator small, LargeAllocator large) :
+		BasicSegregator() {}
+
+		BasicSegregator(SmallAllocator small, LargeAllocator large) :
 			SmallAllocator(small),
 			LargeAllocator(large) {}
 
@@ -47,6 +50,27 @@ class Segregator : private SmallAllocator,
 			return (SmallAllocator::owns(block) || LargeAllocator::owns(block));
 		}
 };
+
+
+
+class Segregator
+{
+	public:
+		class RuntimePolicy {
+			public:
+				RuntimePolicy(SizeType threshold) : threshold_ {threshold} {}
+
+			private:
+				SizeType threshold_;
+		};
+
+		template <SizeType threshold>
+		class TemplatedPolicy {
+			public:
+				static constexpr SizeType getThreshold() { return threshold; }
+		};
+};
+
 
 
 template <SizeType maxSize, class Allocator>

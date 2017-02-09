@@ -339,7 +339,7 @@ class BitmappedBlock
 		template <std::size_t alignment>
 		class Data {
 			public:
-				constexpr BitmappedBlockData(SizeType minimumBlockSize,
+				constexpr Data(SizeType minimumBlockSize,
 				                             SizeType blockCount) :
 					blockSize_  {std::max(alignment, minimumBlockSize)},
 					blockCount_ {blockCount} {}
@@ -398,27 +398,18 @@ class BitmappedBlock
 		};
 
 
-		template <template <class T> class ArrayType, class T>
-		class ArrayRuntimeWrapper :
-			public traits::RuntimeSizedArray<ArrayType, T> {
-			public:
-				ArrayRuntimeWrapper(SizeType size) :
-					traits::RuntimeSizedArray<ArrayType, T> (size) {}
-		};
-
 		template <template <class T, SizeType size> class ArrayType, class T,
 			SizeType minimumBlockSize,
 			SizeType blockCount,
 			std::size_t alignment>
-		class ArrayTemplateWrapper : public ArrayType<T,
-		                                    BitmappedBlockData<alignment>(
-			                                    minimumBlockSize, blockCount
-		                                    ).getElementCount()> {
+		class ArrayTemplateWrapper :
+			public ArrayType<T, Data<alignment>(
+				minimumBlockSize, blockCount
+			).getElementCount()> {
+
 			public:
 				static_assert((minimumBlockSize % alignment == 0),
 				              "Minimum block size must be divisible by the alignment");
-
-				ArrayTemplateWrapper() {}
 		};
 
 		template <template <class T> class CoreArray,
@@ -427,7 +418,7 @@ class BitmappedBlock
 			public:
 				static constexpr std::size_t alignment {t_alignment};
 
-				using ArrayType = ArrayRuntimeWrapper<
+				using ArrayType = traits::RuntimeSizedArray<
 					CoreArray, BitmappedBlockArrayElement
 				>;
 
@@ -460,7 +451,7 @@ class BitmappedBlock
 			SizeType    minimumBlockSize,
 			SizeType    t_blockCount,
 			std::size_t t_alignment>
-		class TemplatePolicy {
+		class TemplatedPolicy {
 			public:
 				static constexpr std::size_t alignment {t_alignment};
 
@@ -497,7 +488,7 @@ class BitmappedBlock
 			private:
 				ArrayType array_;
 
-				static constexpr BitmappedBlockData<alignment> getData() {
+				static constexpr Data<alignment> getData() {
 					return {minimumBlockSize, t_blockCount};
 				};
 

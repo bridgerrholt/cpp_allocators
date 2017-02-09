@@ -1,9 +1,13 @@
-#include <allocators/bitmapped_block.h>
 #include <array>
 #include <vector>
 #include <random>
 #include <type_traits>
+#include <iostream>
+
 #include "../performance_test_0/get_time.h"
+
+#include <allocators/stack_allocator.h>
+#include <allocators/wrappers/allocator_wrapper.h>
 
 template <class T>
 using VectorWrapper = std::vector<T>;
@@ -21,20 +25,19 @@ int main(int argc, char* argv[])
 {
 	using namespace bridgerrholt::allocators;
 
-	using Template = BitmappedBlockTemplate<VectorArray, 16, 16>;
-	using Runtime  = BitmappedBlockRuntime <VectorWrapper>;
+	using Template = StackAllocator::Templated<VectorArray, 16>;
+	using Runtime  = StackAllocator::Runtime  <VectorWrapper>;
 
-	std::mt19937 randomEngine {
-		static_cast<typename std::mt19937::result_type>(bridgerrholt::getTime())
-	};
-	std::normal_distribution<> distribution {0, 5};
+	Runtime t {{16}};
 
-	//Runtime  r {{16, 16}};
-	Template t;
+	auto i = t.allocate(8);
+	auto j = t.allocate(8);
+
+	std::cout << i.getPtr() << '\n';
+	std::cout << j.getPtr() << '\n';
+
+	t.deallocate(j);
+	t.deallocate(i);
 
 
-
-	t.allocate(std::abs(std::round(distribution(randomEngine))) + 1);
-
-	std::cout << std::is_literal_type<BitmappedBlockData<16>>::value << '\n';
 }
