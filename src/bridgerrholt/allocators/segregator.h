@@ -25,15 +25,9 @@ class BasicSegregator : private t_Policy,
 
 		RawBlock allocate(SizeType size) {
 			if (size <= Policy::getThreshold()) {
-				/*static std::size_t smallCount = 0;
-				smallCount++;
-				std::cout << "Small: " << smallCount << '\n';*/
 				return SmallAllocator::allocate(size);
 			}
 			else {
-				/*static std::size_t largeCount = 0;
-				largeCount++;
-				std::cout << "Large: " << largeCount << '\n';*/
 				return LargeAllocator::allocate(size);
 			}
 		}
@@ -41,11 +35,16 @@ class BasicSegregator : private t_Policy,
 		constexpr void deallocate(NullBlock) {}
 
 		void deallocate(RawBlock block) {
-			if (block.getSize() <= Policy::getThreshold())
+			std::cout << "d " << block.getPtr() << ' ' << block.getSize() << '\n';
+			if (block.getSize() <= Policy::getThreshold()) {
+				std::cout << "small\n";
 				SmallAllocator::deallocate(block);
+			}
 
-			else
+			else {
+				std::cout << "large\n";
 				LargeAllocator::deallocate(block);
+			}
 		}
 
 		bool owns(RawBlock block) {

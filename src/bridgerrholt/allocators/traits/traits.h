@@ -28,7 +28,9 @@ class ArrayPolicyBase
 
 		template <class ... ArgTypes>
 		ArrayPolicyBase(ArgTypes ... args) :
-			array_ (std::forward<ArgTypes>(args)...) {}
+			array_ (std::forward<ArgTypes>(args)...) {
+			std::cout << ' ' << array_.data() << ' ' << array_.data() + array_.size() << '\n';
+		}
 
 		ArrayReturn      getArray()       { return array_; }
 		ArrayConstReturn getArray() const { return array_; }

@@ -225,7 +225,7 @@ class BestAllocator {
 		static constexpr std::size_t blockCount {elementCount};
 
 		using SmallAllocatorCore = BitmappedBlock::Templated<
-			VectorWrapper, smallBlock, elementCount
+			VectorWrapper, smallBlock, 16 * 1024 * 512 * 16
 		>;
 
 		using LargeAllocatorCore = BitmappedBlock::Templated<
@@ -240,6 +240,7 @@ class BestAllocator {
 		>;
 
 		using Allocator = AllocatorCore;
+		//using Allocator = SmallAllocatorCore;
 
 		using TestType =
 			RandomSizeAllocationTest<Allocator, AllocatorReturnTypeSimple>;

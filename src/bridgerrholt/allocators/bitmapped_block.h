@@ -81,6 +81,8 @@ class BitmappedBlock
 					for (std::size_t i = 0; i < end; ++i) {
 						this->getArray()[i].clearBits();
 					}
+
+					std::cout << Policy::getArray().data() << ' ' << Policy::getArray().data() + Policy::getArray().capacity() << '\n';
 				}
 
 				Allocator(Allocator && other) :
@@ -201,6 +203,8 @@ class BitmappedBlock
 
 					auto ptr = static_cast<Pointer>(block.getPtr());
 
+					assert(owns(block));
+
 					// The amount of blocks it takes up.
 					std::size_t blocks          {block.getSize() / this->getBlockSize()};
 					std::size_t blockIndexStart {getBlockIndex(ptr)};
@@ -218,10 +222,14 @@ class BitmappedBlock
 #ifdef BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_DEALLOCATION
 					lastInsertionMetaByte_ = getMetaIndex(getBlockIndex(ptr));
 #endif
+
+					std::cout << "`\n";
 				}
 
 				bool owns(RawBlock block) {
 					auto ptr = static_cast<Pointer>(block.getPtr());
+
+					std::cout << ptr << ' ' << this->getArray().data() << '\n';
 
 					return (
 						ptr >= this->getArray().data() + this->getMetaDataSize() &&
@@ -241,6 +249,7 @@ class BitmappedBlock
 					std::size_t lastIndex  {getBlockIndex(byte, bit)};
 					std::size_t firstIndex {lastIndex - blocksRequired + 1};
 					std::size_t index      {firstIndex};
+					std::cout << lastIndex << '\n';
 
 					while (index <= lastIndex) {
 						setMetaBit(index);
@@ -407,6 +416,12 @@ class BitmappedBlock
 			).getElementCount()> {
 
 			public:
+				ArrayTemplateWrapper() {
+					std::cout << this->data() << ' ' << this->data() + this->size() << ' ' << Attributes<alignment>(
+						minimumBlockSize, blockCount
+					).getElementCount() << '\n';
+				}
+
 				static_assert((minimumBlockSize % alignment == 0),
 				              "Minimum block size must be divisible by the alignment");
 		};
