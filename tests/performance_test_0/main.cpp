@@ -331,11 +331,11 @@ void runTests()
 	using SemiFreeListTestType = RandomSizeAllocationTest<SemiFreeListAllocator, AllocatorReturnTypeSimple>;
 	SemiFreeListTestType freeListTest {"Semi- Free List", elementCount};
 
-	/*using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
+	using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
 	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getBlockSize(), AllocatorType::Policy::getBlockCount()}), elementCount};
-	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};*/
+	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};
 
-	std::vector<TestBase *> tests { &newTest, &allocatorTest, &freeListTest /*, &runtimeTest1, &runtimeTest2*/ };
+	std::vector<TestBase *> tests { &newTest, &allocatorTest, &freeListTest, &runtimeTest1, &runtimeTest2 };
 	auto testResults = runTests(tests, iterations);
 	std::vector<double> totals;
 	totals.resize(tests.size());

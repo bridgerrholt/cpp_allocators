@@ -20,7 +20,6 @@ class InternalFreeList
 		static_assert(blockSize >= sizeof(std::uintptr_t),
 		              "Must be able to fit whole pointers");
 
-		using ByteType  = unsigned char;
 
 		friend void swap(InternalFreeList & first, InternalFreeList & second) {
 			using std::swap;
@@ -29,46 +28,39 @@ class InternalFreeList
 			swap(first.root_,   second.root_);
 		}
 
-		InternalFreeList() {
+		InternalFreeList() {}
 
-		}
+		InternalFreeList(Allocator parent) : parent_ (std::move(parent)) {}
 
-		InternalFreeList(Allocator parent) : parent_ {parent} {
-
-		}
-
-		InternalFreeList(InternalFreeList && other) : InternalFreeList {} {
+		InternalFreeList(InternalFreeList && other) : InternalFreeList() {
 			swap(*this, other);
 		}
 
-		bool isEmpty() {
-			return !root_.hasNode();
-		}
+		bool isEmpty() { return !root_.hasNode(); }
 
 
 		RawBlock allocate(SizeType size) {
 			if (isCorrectSize(size) && !isEmpty()) {
-				//std::cout << "FreeList::allocate()\n";
 				RawBlock block {root_.getNodePtr(), size};
 				root_.advance();
 				return block;
 			}
 			else {
-				//std::cout << "parent_.allocate()\n";
 				return parent_.allocate(size);
 			}
 		}
 
+		constexpr void deallocate(NullBlock) {}
+
 		void deallocate(RawBlock block) {
+			if (block.isNull()) return;
+
 			if (isCorrectSize(block)) {
 				common::FreeListNodeView node {block.getPtr()};
 				node.setNextPtr(root_.getNextPtr());
 				root_.setNextPtr(node.getNodePtr());
-
-				//std::cout << "FreeList::deallocate()\n";
 			}
 			else {
-				//std::cout << "parent_.deallocate()\n";
 				parent_.deallocate(block);
 			}
 		}
@@ -79,8 +71,6 @@ class InternalFreeList
 
 
 	private:
-		using Pointer = ByteType *;
-
 		bool isCorrectSize(RawBlock block) {
 			return isCorrectSize(block.getSize());
 		}

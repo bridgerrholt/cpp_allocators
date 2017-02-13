@@ -38,6 +38,8 @@ class BasicSegregator : private t_Policy,
 			}
 		}
 
+		constexpr void deallocate(NullBlock) {}
+
 		void deallocate(RawBlock block) {
 			if (block.getSize() <= Policy::getThreshold())
 				SmallAllocator::deallocate(block);

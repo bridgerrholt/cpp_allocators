@@ -3,6 +3,7 @@
 
 #include <type_traits>
 #include <utility>
+#include <cstddef>
 
 #include "../common/common_types.h"
 
@@ -12,17 +13,20 @@ namespace bridgerrholt {
 class BlockBase
 {
 	public:
-		constexpr BlockBase() : BlockBase {0} {}
+		constexpr BlockBase() : BlockBase(0) {}
 		constexpr BlockBase(SizeType size) : size_ {size} {}
 
 		SizeType getSize() const { return size_; }
 
-		bool operator==(BlockBase const & other) {
-			return (getSize() == other.getSize());
+
+		friend bool operator==(BlockBase const & first,
+		                       BlockBase const & second) {
+			return (first.getSize() == second.getSize());
 		}
 
-		bool operator!=(BlockBase const & other) {
-			return !(*this == other);
+		friend bool operator!=(BlockBase const & first,
+		                       BlockBase const & second) {
+			return !(first == second);
 		}
 
 	private:
@@ -43,10 +47,10 @@ class BasicBlock : public BlockBase
 
 		static constexpr BasicBlock makeNullBlock() { return {}; }
 
-		constexpr BasicBlock() : BasicBlock {nullptr, 0} {}
+		constexpr BasicBlock() : BasicBlock(nullptr, 0) {}
 
 		constexpr BasicBlock(Pointer ptr, SizeType size) :
-			BlockBase {size},
+			BlockBase (size),
 			ptr_      {ptr} {}
 
 		template <class C>
@@ -75,13 +79,15 @@ class BasicBlock : public BlockBase
 
 		operator bool() const { return (getPtr() != nullptr); }
 
-		bool operator==(BasicBlock const & other) {
-			return (BlockBase::operator==(other) &&
-			        getPtr() == other.getPtr());
+		friend bool operator==(BasicBlock const & first,
+		                       BasicBlock const & second) {
+			return (static_cast<BlockBase const &>(first) == second &&
+			        first.getPtr() == second.getPtr());
 		}
 
-		bool operator!=(BasicBlock const & other) {
-			return !(*this == other);
+		friend bool operator!=(BasicBlock const & first,
+		                       BasicBlock const & second) {
+			return !(first == second);
 		}
 
 
@@ -127,13 +133,15 @@ class BasicBlock<void> : public BlockBase
 
 		operator bool() const { return (getPtr() != nullptr); }
 
-		bool operator==(BasicBlock const & other) {
-			return (BlockBase::operator==(other) &&
-			        getPtr() == other.getPtr());
+		friend bool operator==(BasicBlock const & first,
+		                       BasicBlock const & second) {
+			return (static_cast<BlockBase const &>(first) == second &&
+			        first.getPtr() == second.getPtr());
 		}
 
-		bool operator!=(BasicBlock const & other) {
-			return !(*this == other);
+		friend bool operator!=(BasicBlock const & first,
+		                       BasicBlock const & second) {
+			return !(first == second);
 		}
 
 
@@ -142,7 +150,39 @@ class BasicBlock<void> : public BlockBase
 };
 
 
-using RawBlock = BasicBlock<void>;
+
+template <>
+class BasicBlock<std::nullptr_t> : public BlockBase
+{
+	public:
+		using Pointer      = std::nullptr_t;
+		using ConstPointer = std::nullptr_t;
+
+		static constexpr BasicBlock makeNullBlock() { return {}; }
+
+		constexpr BasicBlock() {}
+		constexpr BasicBlock(Pointer, SizeType) {}
+
+
+		constexpr bool isNull() const { return true; }
+
+		constexpr Pointer getPtr() const { return nullptr; }
+
+		constexpr operator bool() const { return false; }
+
+		constexpr bool operator==(BasicBlock const & other) {
+			return true;
+		}
+
+		constexpr bool operator!=(BasicBlock const & other) {
+			return false;
+		}
+};
+
+
+
+using RawBlock  = BasicBlock<void>;
+using NullBlock = BasicBlock<std::nullptr_t>;
 
 
 	}

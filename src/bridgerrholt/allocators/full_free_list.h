@@ -233,9 +233,13 @@ BasicFullFreeList : t_Policy
 			return nextSpot;
 		}
 
+		constexpr void deallocate(NullBlock) {}
+
 		/// @param ptr Must be a pointer returned by
 		///            this same instance's @ref allocate() method.
 		void deallocate(void * ptr) {
+			if (ptr == nullptr) return;
+
 			auto blockPtr = static_cast<ElementType*>(ptr);
 
 			// Overwrite the allocated block with a pointer to

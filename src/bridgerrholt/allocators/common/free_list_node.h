@@ -9,10 +9,11 @@ namespace bridgerrholt {
 /// used directly, use through @ref FreeListNodeView instead.
 class FreeListNode {
 	public:
-		FreeListNode * getNextPtr() const { return nextPtr; }
-		void setNextPtr(FreeListNode * next) { nextPtr = next; }
+		FreeListNode * getNextPtr() const { return nextPtr_; }
+		void setNextPtr(FreeListNode * next) { nextPtr_ = next; }
 
-		FreeListNode * nextPtr;
+	private:
+		FreeListNode * nextPtr_;
 };
 
 

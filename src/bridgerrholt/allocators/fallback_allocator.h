@@ -24,6 +24,8 @@ class FallbackAllocator : private Primary,
 			return toReturn;
 		}
 
+		constexpr void deallocate(NullBlock) {}
+
 		void deallocate(RawBlock block) {
 			if (Primary::owns(block))
 				Primary::deallocate(block);

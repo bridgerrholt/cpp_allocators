@@ -20,6 +20,8 @@ class MallocAllocator
 			return toReturn;
 		}
 
+		constexpr void deallocate(NullBlock) {}
+
 		void deallocate(RawBlock block) {
 			free(block.getPtr());
 		}
