@@ -214,10 +214,40 @@ runTests(std::vector<TestBase *> tests, std::size_t iterations) {
 }
 
 
+using namespace bridgerrholt::allocators;
+using namespace tests;
+
+template <std::size_t elementCount>
+class BestAllocator {
+	public:
+		static constexpr std::size_t smallBlock {16};
+		static constexpr std::size_t largeBlock {smallBlock * 4 * 4};
+		static constexpr std::size_t blockCount {elementCount};
+
+		using SmallAllocatorCore = BitmappedBlock::Templated<
+			VectorWrapper, smallBlock, elementCount
+		>;
+
+		using LargeAllocatorCore = BitmappedBlock::Templated<
+			VectorWrapper, largeBlock, 16 * 1024 * 512
+		>;
+
+		using SmallAllocator = InternalFreeList<SmallAllocatorCore, smallBlock>;
+		using LargeAllocator = LargeAllocatorCore;
+
+		using AllocatorCore = Segregator::Templated<
+			SmallAllocator, LargeAllocator, smallBlock
+		>;
+
+		using Allocator = AllocatorCore;
+
+		using TestType =
+			RandomSizeAllocationTest<Allocator, AllocatorReturnTypeSimple>;
+};
+
+
 void runTests()
 {
-	using namespace bridgerrholt::allocators;
-	using namespace tests;
 
 	/*using Type = long;
 	using AllocatorBaseType = BitmappedBlock<VectorWrapper, sizeof(Type), alignof(Type), alignof(Type)>;
@@ -250,6 +280,7 @@ void runTests()
 	constexpr std::size_t smallBlockSize {16};
 	constexpr std::size_t largeBlockSize {smallBlockSize * 4};
 	constexpr std::size_t blockCount     {elementCount};
+
 
 	/*using SmallAllocatorBase =
 		FullFreeList<
@@ -325,7 +356,7 @@ void runTests()
 	using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
 	NewTestType newTest {"C++ 'new'", elementCount};
 
-	using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
+	/*using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 	AllocatorTestType allocatorTest {"Template Bitmap", elementCount};
 
 	using SemiFreeListTestType = RandomSizeAllocationTest<SemiFreeListAllocator, AllocatorReturnTypeSimple>;
@@ -333,9 +364,14 @@ void runTests()
 
 	using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
 	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getBlockSize(), AllocatorType::Policy::getBlockCount()}), elementCount};
-	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};
+	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};*/
 
-	std::vector<TestBase *> tests { &newTest, &allocatorTest, &freeListTest, &runtimeTest1, &runtimeTest2 };
+	//std::vector<TestBase *> tests { &newTest, &allocatorTest, &freeListTest, &runtimeTest1/*, &runtimeTest2*/};
+
+	BestAllocator<elementCount>::TestType bestTest {"Best Allocator", elementCount};
+
+	std::vector<TestBase *> tests { &newTest, &bestTest };
+
 	auto testResults = runTests(tests, iterations);
 	std::vector<double> totals;
 	totals.resize(tests.size());
