@@ -35,14 +35,11 @@ class BasicSegregator : private t_Policy,
 		constexpr void deallocate(NullBlock) {}
 
 		void deallocate(RawBlock block) {
-			std::cout << "d " << block.getPtr() << ' ' << block.getSize() << '\n';
 			if (block.getSize() <= Policy::getThreshold()) {
-				std::cout << "small\n";
 				SmallAllocator::deallocate(block);
 			}
 
 			else {
-				std::cout << "large\n";
 				LargeAllocator::deallocate(block);
 			}
 		}

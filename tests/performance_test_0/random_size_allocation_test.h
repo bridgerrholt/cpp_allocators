@@ -74,8 +74,14 @@ class RandomSizeAllocationTest : public TestBase
 			pointers_ = {};
 			sizes_ = {};
 
+			std::ptrdiff_t seed;
+			if (!true)
+				seed = getTime();
+			else
+				seed = 0;
+
 			std::mt19937 randomEngine {
-				static_cast<typename std::mt19937::result_type>(/*getTime()*/0)
+				static_cast<typename std::mt19937::result_type>(seed)
 			};
 			std::normal_distribution<> distribution {0, 128};
 

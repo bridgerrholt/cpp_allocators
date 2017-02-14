@@ -82,7 +82,7 @@ class BitmappedBlock
 						this->getArray()[i].clearBits();
 					}
 
-					std::cout << Policy::getArray().data() << ' ' << Policy::getArray().data() + Policy::getArray().capacity() << '\n';
+					assert(Policy::getBlockCount() % elementSizeBits == 0);
 				}
 
 				Allocator(Allocator && other) :
@@ -154,16 +154,17 @@ class BitmappedBlock
 
 					// Total amount of blocks searched so far.
 					// Allocation fails if this reaches blockCount.
-					std::size_t blocksSearched {0};
+					std::size_t blockIndex {0};
 
 					// Size of current group of contiguous unset bits.
 					// Allocation will succeed once this reaches blocksRequired.
 					std::size_t currentRegionSize {0};
 
-					// Loop through each bit in the meta data.
+					// Loop through each block's spot in the meta data.
 					std::size_t byte {lastInsertionMetaByte_};
-					std::size_t end  {this->getMetaDataSize()};
-					RawBlock block;
+
+					// The block count must be divisible by the element size in bits.
+					std::size_t end  {this->getBlockCount() / elementSizeBits};
 
 					while (byte < end) {
 						for (int bit {0}; bit < elementSizeBits; ++bit) {
@@ -172,24 +173,22 @@ class BitmappedBlock
 
 								// Allocation will be successful.
 								if (currentRegionSize == blocksRequired)
-									return {guaranteedAllocate(byte, bit, blocksRequired), size};
+									return {
+										guaranteedAllocate(byte, bit, blocksRequired), size
+									};
 							}
 
 							// The region has ended if the bit is not 0.
 							else {
 								currentRegionSize = 0;
 							}
-
-							++blocksSearched;
-							if (blocksSearched == this->getBlockCount())
-								return RawBlock::makeNullBlock();
 						}
 
-
 						++byte;
-						if (byte == this->getMetaDataSize()) {
+						if (byte == end) {
 							end = lastInsertionMetaByte_;
 							byte = 0;
+							currentRegionSize = 0;
 						}
 					}
 
@@ -203,7 +202,8 @@ class BitmappedBlock
 
 					auto ptr = static_cast<Pointer>(block.getPtr());
 
-					assert(owns(block));
+					if (!owns(block))
+						throw std::runtime_error("Doesn't own block");
 
 					// The amount of blocks it takes up.
 					std::size_t blocks          {block.getSize() / this->getBlockSize()};
@@ -222,14 +222,10 @@ class BitmappedBlock
 #ifdef BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_DEALLOCATION
 					lastInsertionMetaByte_ = getMetaIndex(getBlockIndex(ptr));
 #endif
-
-					std::cout << "`\n";
 				}
 
 				bool owns(RawBlock block) {
 					auto ptr = static_cast<Pointer>(block.getPtr());
-
-					std::cout << ptr << ' ' << this->getArray().data() << '\n';
 
 					return (
 						ptr >= this->getArray().data() + this->getMetaDataSize() &&
@@ -249,7 +245,9 @@ class BitmappedBlock
 					std::size_t lastIndex  {getBlockIndex(byte, bit)};
 					std::size_t firstIndex {lastIndex - blocksRequired + 1};
 					std::size_t index      {firstIndex};
-					std::cout << lastIndex << '\n';
+
+					if (!owns({getBlockPtr(firstIndex), 0}))
+						std::cout << "No own\n";
 
 					while (index <= lastIndex) {
 						setMetaBit(index);
@@ -265,7 +263,10 @@ class BitmappedBlock
 						lastInsertionMetaByte_ = getMetaIndex(index);
 #endif
 
-					return getBlockPtr(firstIndex);
+					auto toReturn = getBlockPtr(firstIndex);
+					if (toReturn >= Policy::getArray().data() + Policy::getBlockSize() * Policy::getBlockCount() + Policy::getMetaDataSize())
+						std::cout << "Bad alloc\n";
+					return toReturn;
 				}
 
 
@@ -416,12 +417,6 @@ class BitmappedBlock
 			).getElementCount()> {
 
 			public:
-				ArrayTemplateWrapper() {
-					std::cout << this->data() << ' ' << this->data() + this->size() << ' ' << Attributes<alignment>(
-						minimumBlockSize, blockCount
-					).getElementCount() << '\n';
-				}
-
 				static_assert((minimumBlockSize % alignment == 0),
 				              "Minimum block size must be divisible by the alignment");
 		};

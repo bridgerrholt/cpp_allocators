@@ -225,14 +225,14 @@ class BestAllocator {
 		static constexpr std::size_t blockCount {elementCount};
 
 		using SmallAllocatorCore = BitmappedBlock::Templated<
-			VectorWrapper, smallBlock, 16 * 1024 * 512 * 16
+			VectorWrapper, smallBlock, elementCount
 		>;
 
 		using LargeAllocatorCore = BitmappedBlock::Templated<
-			VectorWrapper, largeBlock, 16 * 1024 * 512
+			VectorWrapper, largeBlock, 1024 * 1024 / blockCount
 		>;
 
-		using SmallAllocator = InternalFreeList<SmallAllocatorCore, smallBlock>;
+		using SmallAllocator = SmallAllocatorCore; //InternalFreeList<SmallAllocatorCore, smallBlock>;
 		using LargeAllocator = LargeAllocatorCore;
 
 		using AllocatorCore = Segregator::Templated<
