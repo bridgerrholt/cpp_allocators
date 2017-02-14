@@ -36,34 +36,18 @@ class BlockBase
 
 
 template <class T>
-class BasicBlock : public BlockBase
+class BlockBaseTemplate : public BlockBase
 {
 	public:
 		using Type           = T;
 		using Pointer        = Type       *;
 		using ConstPointer   = Type const *;
-		using Reference      = Type       &;
-		using ConstReference = Type const &;
 
-		static constexpr BasicBlock makeNullBlock() { return {}; }
+		constexpr BlockBaseTemplate() : BlockBaseTemplate(nullptr, 0) {}
 
-		constexpr BasicBlock() : BasicBlock(nullptr, 0) {}
-
-		constexpr BasicBlock(Pointer ptr, SizeType size) :
+		constexpr BlockBaseTemplate(Pointer ptr, SizeType size) :
 			BlockBase (size),
 			ptr_      {ptr} {}
-
-		template <class C>
-		BasicBlock(BasicBlock<C> block) :
-			BasicBlock {static_cast<Pointer>(block.getPtr()), block.getSize()} {
-			// Can only convert from a child to a base or from/to void.
-			static_assert(
-				(std::is_base_of<Type, C>() ||
-				 std::is_same<void, C>()    ||
-				 std::is_same<void, Type>()),
-				"Cannot convert to non-base"
-			);
-		}
 
 
 		bool isNull() const { return (ptr_ == nullptr); }
@@ -71,22 +55,18 @@ class BasicBlock : public BlockBase
 		ConstPointer getPtr() const { return ptr_; }
 		Pointer      getPtr()       { return ptr_; }
 
-		Reference      operator*()       { return *getPtr(); }
-		ConstReference operator*() const { return *getPtr(); }
-
-		Reference      operator->()       { return *getPtr(); }
-		ConstReference operator->() const { return *getPtr(); }
-
 		operator bool() const { return (getPtr() != nullptr); }
 
-		friend bool operator==(BasicBlock const & first,
-		                       BasicBlock const & second) {
-			return (static_cast<BlockBase const &>(first) == second &&
-			        first.getPtr() == second.getPtr());
+		friend bool operator==(BlockBaseTemplate const & first,
+		                       BlockBaseTemplate const & second) {
+			return (
+				(static_cast<BlockBase const &>(first) == second) &&
+				first.getPtr() == second.getPtr()
+			);
 		}
 
-		friend bool operator!=(BasicBlock const & first,
-		                       BasicBlock const & second) {
+		friend bool operator!=(BlockBaseTemplate const & first,
+		                       BlockBaseTemplate const & second) {
 			return !(first == second);
 		}
 
@@ -97,9 +77,46 @@ class BasicBlock : public BlockBase
 
 
 
-template <>
-class BasicBlock<void> : public BlockBase
+template <class T>
+class BasicBlock : public BlockBaseTemplate<T>
 {
+	private:
+		using BaseType = BlockBaseTemplate<T>;
+
+	public:
+		using Type           = typename BaseType::Type;
+		using Pointer        = typename BaseType::Pointer;
+		using ConstPointer   = typename BaseType::ConstPointer;
+		using Reference      = Type       &;
+		using ConstReference = Type const &;
+
+		static constexpr BasicBlock makeNullBlock() { return {}; }
+
+		constexpr BasicBlock() : BasicBlock(nullptr, 0) {}
+
+		constexpr BasicBlock(Pointer ptr, SizeType size) :
+			BaseType(ptr, size) {}
+
+		template <class Type>
+		BasicBlock(BasicBlock<Type> block) :
+			BasicBlock(static_cast<Pointer>(block.getPtr()), block.getSize()) {}
+
+
+		Reference      operator*()       { return *BaseType::getPtr(); }
+		ConstReference operator*() const { return *BaseType::getPtr(); }
+
+		Reference      operator->()       { return *BaseType::getPtr(); }
+		ConstReference operator->() const { return *BaseType::getPtr(); }
+};
+
+
+
+template <>
+class BasicBlock<void> : public BlockBaseTemplate<void>
+{
+	private:
+		using BaseType = BlockBaseTemplate<void>;
+
 	public:
 		using Type           = void;
 		using Pointer        = Type       *;
@@ -110,58 +127,25 @@ class BasicBlock<void> : public BlockBase
 		constexpr BasicBlock() : BasicBlock {nullptr, 0} {}
 
 		constexpr BasicBlock(Pointer ptr, SizeType size) :
-			BlockBase {size},
-			ptr_      {ptr} {}
+			BaseType(ptr, size) {}
 
 		template <class C>
 		BasicBlock(BasicBlock<C> block) :
-			BasicBlock {static_cast<Pointer>(block.getPtr()), block.getSize()} {
-			// Can only convert from a child to a base or from/to void.
-			static_assert(
-				(std::is_base_of<Type, C>() ||
-				 std::is_same<void, C>()    ||
-				 std::is_same<void, Type>()),
-				"Cannot convert to non-base"
-			);
-		}
-
-
-		bool isNull() const { return (ptr_ == nullptr); }
-
-		ConstPointer getPtr() const { return ptr_; }
-		Pointer      getPtr()       { return ptr_; }
-
-		operator bool() const { return (getPtr() != nullptr); }
-
-		friend bool operator==(BasicBlock const & first,
-		                       BasicBlock const & second) {
-			return (static_cast<BlockBase const &>(first) == second &&
-			        first.getPtr() == second.getPtr());
-		}
-
-		friend bool operator!=(BasicBlock const & first,
-		                       BasicBlock const & second) {
-			return !(first == second);
-		}
-
-
-	private:
-		Pointer ptr_;
+			BasicBlock {static_cast<Pointer>(block.getPtr()), block.getSize()} {}
 };
 
 
 
-template <>
-class BasicBlock<std::nullptr_t> : public BlockBase
+class NullBlock : public BlockBase
 {
 	public:
 		using Pointer      = std::nullptr_t;
 		using ConstPointer = std::nullptr_t;
 
-		static constexpr BasicBlock makeNullBlock() { return {}; }
+		static constexpr NullBlock makeNullBlock() { return {}; }
 
-		constexpr BasicBlock() {}
-		constexpr BasicBlock(Pointer, SizeType) {}
+		constexpr NullBlock() {}
+		constexpr NullBlock(Pointer, SizeType) {}
 
 
 		constexpr bool isNull() const { return true; }
@@ -170,19 +154,17 @@ class BasicBlock<std::nullptr_t> : public BlockBase
 
 		constexpr operator bool() const { return false; }
 
-		constexpr bool operator==(BasicBlock const & other) {
+		constexpr bool operator==(NullBlock const & other) {
 			return true;
 		}
 
-		constexpr bool operator!=(BasicBlock const & other) {
+		constexpr bool operator!=(NullBlock const & other) {
 			return false;
 		}
 };
 
 
-
-using RawBlock  = BasicBlock<void>;
-using NullBlock = BasicBlock<std::nullptr_t>;
+using RawBlock = BasicBlock<void>;
 
 
 	}
