@@ -12,18 +12,24 @@ namespace bridgerrholt {
 class MallocAllocator
 {
 	public:
-		MallocAllocator() {}
+		constexpr MallocAllocator() {}
 
-		RawBlock allocate(SizeType size) {
-			RawBlock toReturn {malloc(size), size};
-
-			return toReturn;
+		RawBlock allocate(SizeType size) const {
+			return {allocatePtr(size), size};
 		}
 
-		constexpr void deallocate(NullBlock) {}
+		void * allocatePtr(SizeType size) const {
+			return std::malloc(size);
+		}
 
-		void deallocate(RawBlock block) {
-			free(block.getPtr());
+		constexpr void deallocate(NullBlock) const {}
+
+		void deallocate(RawBlock block) const {
+			deallocate(block.getPtr());
+		}
+
+		void deallocate(void * ptr) const {
+			std::free(ptr);
 		}
 };
 

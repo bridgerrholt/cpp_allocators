@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 {
 	using namespace bridgerrholt::allocators;
 
-	/*using Template = StackAllocator::Templated<VectorArray, 16>;
+	using Template = StackAllocator::Templated<VectorArray, 16>;
 	using Runtime  = StackAllocator::Runtime  <VectorWrapper>;
 
 	Runtime t {{16}};
@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
 	std::cout << j.getPtr() << '\n';
 
 	t.deallocate(j);
-	t.deallocate(i);*/
+	t.deallocate(i);
 
 	int i1 {};
 

@@ -185,12 +185,6 @@ BasicFullFreeList : t_Policy
 
 		BasicFullFreeList(Policy policy) : Policy(std::move(policy)) {
 
-			/*std::cout << "minimumBlockSize = " << minimumBlockSize << '\n'
-			          << "blockCount       = " << blockCount << '\n'
-			          << "minimumAlignment = " << minimumAlignment << '\n'
-			          << "blockSize        = " << blockSize << '\n'
-			          << "alignment        = " << alignment << '\n' << std::endl;*/
-
 			ElementType       *       currentPtr {this->getArray().data()};
 			ElementType       *       nextPtr    {currentPtr + 1};
 			ElementType const * const end        {this->getArray().data() + this->getBlockCount()};
@@ -260,7 +254,6 @@ BasicFullFreeList : t_Policy
 
 		IteratorType root_;
 };
-
 
 
 

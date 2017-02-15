@@ -53,15 +53,16 @@ class InternalFreeList
 		constexpr void deallocate(NullBlock) {}
 
 		void deallocate(RawBlock block) {
-			if (block.isNull()) return;
+			if (!block.isNull()) {
+				if (isCorrectSize(block)) {
+					common::FreeListNodeView node {block.getPtr()};
+					node.setNextPtr(root_.getNextPtr());
+					root_.setNextPtr(node.getNodePtr());
+				}
 
-			if (isCorrectSize(block)) {
-				common::FreeListNodeView node {block.getPtr()};
-				node.setNextPtr(root_.getNextPtr());
-				root_.setNextPtr(node.getNodePtr());
-			}
-			else {
-				parent_.deallocate(block);
+				else {
+					parent_.deallocate(block);
+				}
 			}
 		}
 

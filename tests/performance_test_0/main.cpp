@@ -220,23 +220,39 @@ using namespace tests;
 template <std::size_t elementCount>
 class BestAllocator {
 	public:
-		static constexpr std::size_t smallBlock {16};
-		static constexpr std::size_t largeBlock {smallBlock * 4 * 4};
-		static constexpr std::size_t blockCount {elementCount};
+		static constexpr std::size_t freeListBlock {16};
+		static constexpr std::size_t smallBlock    {32};
+		static constexpr std::size_t largeBlock    {128};
+		static constexpr std::size_t blockCount    {elementCount};
+
+		using FreeListCore = FullFreeList::Templated<
+			VectorWrapper, freeListBlock, elementCount
+		>;
 
 		using SmallAllocatorCore = BitmappedBlock::Templated<
 			VectorWrapper, smallBlock, elementCount
 		>;
 
 		using LargeAllocatorCore = BitmappedBlock::Templated<
-			VectorWrapper, largeBlock, 1024 * 1024 / blockCount
+			VectorWrapper, largeBlock, 1024 * 1024 / largeBlock
 		>;
 
-		using SmallAllocator = SmallAllocatorCore; //InternalFreeList<SmallAllocatorCore, smallBlock>;
+		using FreeList = BlockAllocatorRegularInterface<
+			FreeListCore
+		>;
+
+		using SmallAllocator = Segregator::Templated<
+			FreeList, SmallAllocatorCore, freeListBlock
+		>;
+
 		using LargeAllocator = LargeAllocatorCore;
 
-		using AllocatorCore = Segregator::Templated<
+		/*using AllocatorCore = Segregator::Templated<
 			SmallAllocator, LargeAllocator, smallBlock
+		>;*/
+
+		using AllocatorCore = Segregator::Templated<
+			FreeList, LargeAllocator, freeListBlock
 		>;
 
 		using Allocator = AllocatorCore;

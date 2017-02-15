@@ -27,13 +27,11 @@ class ArrayPolicyBase
 		using ArrayConstReturn = ArrayType const &;
 
 		template <class ... ArgTypes>
-		ArrayPolicyBase(ArgTypes ... args) :
-			array_ (std::forward<ArgTypes>(args)...) {
-			std::cout << ' ' << array_.data() << ' ' << array_.data() + array_.size() << '\n';
-		}
+		constexpr ArrayPolicyBase(ArgTypes ... args) :
+			array_ (std::forward<ArgTypes>(args)...) {}
 
-		ArrayReturn      getArray()       { return array_; }
-		ArrayConstReturn getArray() const { return array_; }
+		constexpr ArrayReturn      getArray()       { return array_; }
+		constexpr ArrayConstReturn getArray() const { return array_; }
 
 	private:
 		ArrayType array_;

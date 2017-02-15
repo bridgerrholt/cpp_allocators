@@ -8,6 +8,8 @@
 namespace bridgerrholt {
 	namespace allocators {
 
+
+/// Allocates by pushing to a stack and deallocates by popping from the stack.
 		class StackAllocator {
 
 public:
@@ -26,9 +28,9 @@ public:
 				if (size == 0) size = 1;
 
 				if (next_ <= getEnd() - size) {
-					RawBlock toReturn {next_, size};
+					auto ptr {next_};
 					next_ += size;
-					return toReturn;
+					return {ptr, size};
 				}
 				else {
 					return RawBlock::makeNullBlock();
@@ -38,13 +40,23 @@ public:
 			constexpr void deallocate(NullBlock) {}
 
 			void deallocate(RawBlock block) {
-				if (block.isNull()) return;
-				if (static_cast<ElementType*>(block.getPtr()) + block.getSize() == next_)
-					deallocateTo(block);
+				if (!block.isNull()) {
+
+					auto blockEnd {
+						static_cast<ElementType *>(block.getPtr()) + block.getSize()
+					};
+
+					if (blockEnd == next_)
+						deallocateTo(block.getPtr());
+				}
 			}
 
 			void deallocateTo(RawBlock block) {
-				next_ = static_cast<ElementType*>(block.getPtr());
+				deallocateTo(block.getPtr());
+			}
+
+			void deallocateTo(void * ptr) {
+				next_ = static_cast<ElementType*>(ptr);
 			}
 
 			void clear() {
@@ -52,7 +64,7 @@ public:
 			}
 
 			bool owns(RawBlock block) {
-				return (block.getPtr() >= getBegin() && block.getPtr() < getEnd());
+				return (getBegin() <= block.getPtr() && block.getPtr() < getEnd());
 			}
 
 			bool isEmpty() {
@@ -67,11 +79,12 @@ public:
 		private:
 			using ElementType = char;
 
-			ElementType * getBegin() { return this->getArray().data(); }
-			ElementType * getEnd()   { return getBegin() + this->getStackSize(); }
+			ElementType * getBegin() { return Policy::getArray().data(); }
+			ElementType * getEnd()   { return getBegin() + Policy::getStackSize(); }
 
 			ElementType * next_;
 	};
+
 
 	template <template <class T> class CoreArray>
 	class RuntimePolicy {
