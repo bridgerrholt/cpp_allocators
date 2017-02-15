@@ -264,8 +264,6 @@ class BitmappedBlock
 #endif
 
 					auto toReturn = getBlockPtr(firstIndex);
-					if (toReturn >= Policy::getArray().data() + Policy::getBlockSize() * Policy::getBlockCount() + Policy::getMetaDataSize())
-						std::cout << "Bad alloc\n";
 					return toReturn;
 				}
 
