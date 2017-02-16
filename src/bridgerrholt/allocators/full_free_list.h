@@ -113,6 +113,10 @@ class FullFreeList
 
 				RuntimePolicy(SizeType blockCount) : array_ (blockCount) {}
 
+				SizeType calcNeededSize(SizeType desiredSize) const {
+					return getBlockSize();
+				}
+
 				ArrayReturn      getArray()       { return array_; }
 				ArrayConstReturn getArray() const { return array_; }
 
@@ -139,6 +143,10 @@ class FullFreeList
 
 				using ArrayReturn      = ArrayType       &;
 				using ArrayConstReturn = ArrayType const &;
+
+				static constexpr SizeType calcNeededSize(SizeType desiredSize) {
+					return getBlockSize();
+				}
 
 				ArrayReturn      getArray()       { return array_; }
 				ArrayConstReturn getArray() const { return array_; }
@@ -213,8 +221,6 @@ BasicFullFreeList : t_Policy
 		/// @return Guaranteed to be aligned with the alignment of
 		///         the @ref FullFreeList instantiation.
 		void * allocate() {
-			//std::cout << "FullFreeList::allocate()\n";
-
 			auto nextSpot = static_cast<void*>(&root_.get());
 
 			// If root_ points to an unallocated spot,

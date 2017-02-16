@@ -16,7 +16,8 @@ class BlockBase
 		constexpr BlockBase() : BlockBase(0) {}
 		constexpr BlockBase(SizeType size) : size_ {size} {}
 
-		SizeType getSize() const { return size_; }
+		SizeType   getSize() const { return size_; }
+		SizeType & getSize()       { return size_; }
 
 
 		friend bool operator==(BlockBase const & first,
@@ -54,6 +55,7 @@ class BlockBaseTemplate : public BlockBase
 
 		ConstPointer getPtr() const { return ptr_; }
 		Pointer      getPtr()       { return ptr_; }
+		Pointer &    getPtrRef()    { return ptr_; }
 
 		operator bool() const { return (getPtr() != nullptr); }
 

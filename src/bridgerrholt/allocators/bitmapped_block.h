@@ -140,16 +140,10 @@ class BitmappedBlock
 
 				RawBlock allocate(SizeType size) {
 					// An allocation takes place even if the size is 0.
-					if (size == 0) {
-						size = this->getBlockSize();
-					}
-					else {
-						// The size must take up a whole number of blocks.
-						size = common::roundUpToMultiple(size, this->getBlockSize());
-					}
+					size = Policy::calcNeededSize(size);
 
 					// The amount of blocks that must be reserved for the allocation.
-					std::size_t blocksRequired {size / this->getBlockSize()};
+					std::size_t blocksRequired {size / Policy::getBlockSize()};
 
 
 					// Total amount of blocks searched so far.
@@ -164,7 +158,7 @@ class BitmappedBlock
 					std::size_t byte {lastInsertionMetaByte_};
 
 					// The block count must be divisible by the element size in bits.
-					std::size_t end  {this->getBlockCount() / elementSizeBits};
+					std::size_t end  {Policy::getBlockCount() / elementSizeBits};
 
 					while (byte < end) {
 						for (int bit {0}; bit < elementSizeBits; ++bit) {
@@ -206,7 +200,9 @@ class BitmappedBlock
 						throw std::runtime_error("Doesn't own block");
 
 					// The amount of blocks it takes up.
-					std::size_t blocks          {block.getSize() / this->getBlockSize()};
+					std::size_t blocks          {
+						block.getSize() / Policy::getBlockSize()
+					};
 					std::size_t blockIndexStart {getBlockIndex(ptr)};
 					std::size_t objectEnd       {blockIndexStart + blocks};
 
@@ -228,8 +224,8 @@ class BitmappedBlock
 					auto ptr = static_cast<Pointer>(block.getPtr());
 
 					return (
-						ptr >= this->getArray().data() + this->getMetaDataSize() &&
-					  ptr <  this->getArray().data() + this->getTotalSize()
+						ptr >= Policy::getArray().data() + Policy::getMetaDataSize() &&
+					  ptr <  Policy::getArray().data() + Policy::getTotalSize()
 					);
 				}
 
@@ -257,7 +253,7 @@ class BitmappedBlock
 
 #ifdef BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_ALLOCATION
 					// index should be 1 past lastIndex.
-					if (index == this->getBlockCount())
+					if (index == Policy::getBlockCount())
 						lastInsertionMetaByte_ = 0;
 					else
 						lastInsertionMetaByte_ = getMetaIndex(index);
@@ -270,8 +266,8 @@ class BitmappedBlock
 
 				SizeType getBlockIndex(Pointer blockPtr) const {
 					auto normal =
-						blockPtr - this->getArray().data() - this->getMetaDataSize();
-					return (normal / this->getBlockSize());
+						blockPtr - Policy::getArray().data() - Policy::getMetaDataSize();
+					return (normal / Policy::getBlockSize());
 				}
 
 
@@ -290,15 +286,15 @@ class BitmappedBlock
 
 
 				ConstPointer getBlockPtr(SizeType blockIndex) const {
-					return this->getArray().data() + getBlockPtrOffset(blockIndex);
+					return Policy::getArray().data() + getBlockPtrOffset(blockIndex);
 				}
 
 				Pointer getBlockPtr(SizeType blockIndex) {
-					return this->getArray().data() + getBlockPtrOffset(blockIndex);
+					return Policy::getArray().data() + getBlockPtrOffset(blockIndex);
 				}
 
 				SizeType getBlockPtrOffset(SizeType blockIndex) const {
-					return this->getMetaDataSize() + (blockIndex * this->getBlockSize());
+					return Policy::getMetaDataSize() + (blockIndex * Policy::getBlockSize());
 				}
 
 
@@ -308,7 +304,7 @@ class BitmappedBlock
 				}
 
 				int getMetaBit(SizeType metaIndex, int metaBitIndex) const {
-					return this->getArray()[metaIndex].getBit(metaBitIndex);
+					return Policy::getArray()[metaIndex].getBit(metaBitIndex);
 				}
 
 
@@ -317,7 +313,7 @@ class BitmappedBlock
 				}
 
 				void setMetaBit(SizeType metaIndex, int metaBitIndex) {
-					this->getArray()[metaIndex].setBit(metaBitIndex);
+					Policy::getArray()[metaIndex].setBit(metaBitIndex);
 				}
 
 
@@ -326,7 +322,7 @@ class BitmappedBlock
 				}
 
 				void unsetMetaBit(SizeType metaIndex, int metaBitIndex) {
-					this->getArray()[metaIndex].unsetBit(metaBitIndex);
+					Policy::getArray()[metaIndex].unsetBit(metaBitIndex);
 				}
 
 
@@ -420,8 +416,18 @@ class BitmappedBlock
 		};
 
 
-		// Runtime policy
 	private:
+		static constexpr SizeType
+		calcNeededSize(SizeType blockSize, SizeType desiredSize) {
+			if (desiredSize == 0) {
+				return blockSize;
+			}
+			else {
+				return common::roundUpToMultiple(desiredSize, blockSize);
+			}
+		}
+
+		// Runtime policy
 		template <template <class> class A>
 		using RuntimeArrayType =
 			traits::RuntimeSizedArray<
@@ -452,7 +458,13 @@ class BitmappedBlock
 
 				RuntimePolicy(SizeType minimumBlockSize, SizeType blockCount) :
 					DataType   (minimumBlockSize, blockCount),
-					PolicyBase (this->getElementCount()) {}
+					PolicyBase (DataType::getElementCount()) {}
+
+				SizeType calcNeededSize(SizeType desiredSize) const {
+					return BitmappedBlock::calcNeededSize(
+						DataType::getBlockSize(), desiredSize
+					);
+				}
 
 
 			private:
@@ -496,6 +508,10 @@ class BitmappedBlock
 				using ArrayType        = typename PolicyBase::ArrayType;
 				using ArrayReturn      = typename PolicyBase::ArrayReturn;
 				using ArrayConstReturn = typename PolicyBase::ArrayConstReturn;
+
+				static constexpr SizeType calcNeededSize(SizeType desiredSize) {
+					return BitmappedBlock::calcNeededSize(getBlockSize(), desiredSize);
+				}
 
 				static constexpr SizeType getMetaDataSize()
 					{ return getAttributes().getMetaDataSize(); }

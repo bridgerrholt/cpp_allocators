@@ -30,20 +30,14 @@ int main(int argc, char* argv[])
 
 	Runtime t {{16}};
 
-	auto i = t.allocate(8);
-	auto j = t.allocate(8);
+	auto i = t.allocate(16);
 
-	std::cout << i.getPtr() << '\n';
-	std::cout << j.getPtr() << '\n';
+	std::cout << i.getPtr() << ' ' << i.getSize() << '\n';
 
-	t.deallocate(j);
+	std::cout << t.expand(i, 8) << '\n';
+
+	std::cout << i.getPtr() << ' ' << i.getSize() << '\n';
+
 	t.deallocate(i);
-
-	int i1 {};
-
-	BasicBlock<int> b1 {&i1, 10};
-	BasicBlock<int> b2 {&i1, 10};
-
-	std::cout << (b1 == b2) << '\n';
 
 }

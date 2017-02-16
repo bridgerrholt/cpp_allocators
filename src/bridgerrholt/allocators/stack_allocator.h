@@ -24,8 +24,15 @@ public:
 			Allocator(Policy policy) : Policy (std::move(policy)),
 			                           next_  {getBegin()} {}
 
+			static constexpr SizeType calcNeededSize(SizeType desiredSize) {
+				if (desiredSize == 0)
+					return 1;
+				else
+					return desiredSize;
+			}
+
 			RawBlock allocate(SizeType size) {
-				if (size == 0) size = 1;
+				size = calcNeededSize(size);
 
 				if (next_ <= getEnd() - size) {
 					auto ptr {next_};
@@ -37,13 +44,28 @@ public:
 				}
 			}
 
+			RawBlock allocateAll() {
+				next_ = getEnd();
+				return {getBegin(), getEnd() - getBegin()};
+			}
+
+			RawBlock allocateRemaining() {
+				if (!isFull()) {
+					auto ptr {next_};
+					next_ = getEnd();
+					return {ptr, getEnd() - ptr};
+				}
+
+				return RawBlock::makeNullBlock();
+			}
+
 			constexpr void deallocate(NullBlock) {}
 
 			void deallocate(RawBlock block) {
 				if (!block.isNull()) {
 
 					auto blockEnd {
-						static_cast<ElementType *>(block.getPtr()) + block.getSize()
+						static_cast<ElementPtr>(block.getPtr()) + block.getSize()
 					};
 
 					if (blockEnd == next_)
@@ -56,11 +78,26 @@ public:
 			}
 
 			void deallocateTo(void * ptr) {
-				next_ = static_cast<ElementType*>(ptr);
+				next_ = static_cast<ElementPtr>(ptr);
 			}
 
-			void clear() {
+			void deallocateAll() {
 				next_ = getBegin();
+			}
+
+			bool expand(RawBlock & block, SizeType amount) {
+				ElementPtr ptr {static_cast<ElementPtr>(block.getPtr())};
+
+				if (isTop(block)) {
+					if (calcRemaining() >= amount) {
+						block.getSize() += amount;
+						next_           += amount;
+
+						return true;
+					}
+				}
+
+				return false;
 			}
 
 			bool owns(RawBlock block) {
@@ -75,14 +112,36 @@ public:
 				return (next_ == getEnd());
 			}
 
+			bool isTop(RawBlock block) const {
+				auto blockEnd {
+					static_cast<ElementPtr>(block.getPtr()) + block.getSize()
+				};
+
+				return (blockEnd == next_);
+			}
+
+			SizeType calcRemaining() const {
+				return getEnd() - next_;
+			}
+
 
 		private:
-			using ElementType = char;
+			using ElementType      = char;
+			using ElementPtr       = ElementType       *;
+			using ElementConstPtr  = ElementType const *;
 
-			ElementType * getBegin() { return Policy::getArray().data(); }
-			ElementType * getEnd()   { return getBegin() + Policy::getStackSize(); }
+			ElementPtr      getBegin()       { return Policy::getArray().data(); }
+			ElementConstPtr getBegin() const { return Policy::getArray().data(); }
 
-			ElementType * next_;
+			ElementPtr getEnd() {
+				return getBegin() + Policy::getStackSize();
+			}
+
+			ElementConstPtr getEnd() const {
+				return getBegin() + Policy::getStackSize();
+			}
+
+			ElementPtr next_;
 	};
 
 
