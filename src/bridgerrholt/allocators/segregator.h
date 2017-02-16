@@ -7,6 +7,8 @@
 namespace bridgerrholt {
 	namespace allocators {
 
+/// Chooses between two different allocators based on whether the
+/// requested size is above the threshold or not.
 		class Segregator
 {
 	public:

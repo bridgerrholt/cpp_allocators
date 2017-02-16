@@ -32,7 +32,7 @@ public:
 					return desiredSize;
 			}
 
-			/// Allocates the next blocks on the stack.
+			/// Allocates the next blocks in the container.
 			RawBlock allocate(SizeType size) {
 				size = calcNeededSize(size);
 
@@ -46,7 +46,7 @@ public:
 				}
 			}
 
-			/// Effectively deallocates and then allocates the whole stack.
+			/// Effectively deallocates and then allocates the whole container.
 			RawBlock allocateAll() {
 				next_ = getEnd();
 				return {getBegin(), getEnd() - getBegin()};
@@ -186,29 +186,29 @@ public:
 
 
 	template <template <class T> class CoreArray>
-	class RuntimePolicy {
+	class RuntimePolicy :
+		public traits::ArrayPolicyBase<CoreArray<char> > {
+
 		public:
 			using ArrayType = CoreArray<char>;
 
 			using ArrayReturn      = ArrayType       &;
 			using ArrayConstReturn = ArrayType const &;
 
-			RuntimePolicy(SizeType stackSize) : array_ (stackSize) {}
+			RuntimePolicy(SizeType stackSize) : BaseType (stackSize) {}
 
-			ArrayReturn      getArray()       { return array_; }
-			ArrayConstReturn getArray() const { return array_; }
-
-			SizeType getStackSize() const { return array_.size(); }
+			SizeType getStackSize() const { return BaseType::getArray().size(); }
 
 		private:
-			ArrayType array_;
+			using BaseType = traits::ArrayPolicyBase<CoreArray<char> >;
 	};
 
 
 	template <template <class T, SizeType size> class CoreArray,
 		SizeType stackSize>
-	class TemplatedPolicy : public traits::ArrayPolicyBase<
-														       CoreArray<char, stackSize> > {
+	class TemplatedPolicy :
+		public traits::ArrayPolicyBase<CoreArray<char, stackSize> > {
+
 		public:
 			static constexpr SizeType getStackSize() { return stackSize; }
 	};
