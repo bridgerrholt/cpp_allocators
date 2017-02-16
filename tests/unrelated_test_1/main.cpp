@@ -30,11 +30,19 @@ int main(int argc, char* argv[])
 
 	Runtime t {{16}};
 
-	auto i = t.allocate(16);
+	auto i = t.allocate(4);
+	auto j = t.allocate(4);
+
+	std::cout << i.getPtr() << ' ' << i.getSize() << '\n';
+	std::cout << j.getPtr() << ' ' << j.getSize() << '\n';
+
+	std::cout << t.reallocate(i, 8) << '\n';
 
 	std::cout << i.getPtr() << ' ' << i.getSize() << '\n';
 
-	std::cout << t.expand(i, 8) << '\n';
+	t.deallocate(j);
+
+	std::cout << t.reallocate(i, 8) << '\n';
 
 	std::cout << i.getPtr() << ' ' << i.getSize() << '\n';
 

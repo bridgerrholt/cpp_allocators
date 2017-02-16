@@ -24,6 +24,7 @@ public:
 			Allocator(Policy policy) : Policy (std::move(policy)),
 			                           next_  {getBegin()} {}
 
+			/// Does nothing but turn it into 1 if it's 0.
 			static constexpr SizeType calcNeededSize(SizeType desiredSize) {
 				if (desiredSize == 0)
 					return 1;
@@ -31,11 +32,12 @@ public:
 					return desiredSize;
 			}
 
+			/// Allocates the next blocks on the stack.
 			RawBlock allocate(SizeType size) {
 				size = calcNeededSize(size);
 
 				if (next_ <= getEnd() - size) {
-					auto ptr {next_};
+					auto ptr = next_;
 					next_ += size;
 					return {ptr, size};
 				}
@@ -44,14 +46,16 @@ public:
 				}
 			}
 
+			/// Effectively deallocates and then allocates the whole stack.
 			RawBlock allocateAll() {
 				next_ = getEnd();
 				return {getBegin(), getEnd() - getBegin()};
 			}
 
+			/// Allocates everything after the top of the stack.
 			RawBlock allocateRemaining() {
 				if (!isFull()) {
-					auto ptr {next_};
+					auto ptr = next_;
 					next_ = getEnd();
 					return {ptr, getEnd() - ptr};
 				}
@@ -61,65 +65,90 @@ public:
 
 			constexpr void deallocate(NullBlock) {}
 
+			/// Deallocates only if the block is on top.
 			void deallocate(RawBlock block) {
 				if (!block.isNull()) {
 
-					auto blockEnd {
-						static_cast<ElementPtr>(block.getPtr()) + block.getSize()
-					};
-
-					if (blockEnd == next_)
+					if (isTop(block))
 						deallocateTo(block.getPtr());
 				}
 			}
 
+			/// Deallocates all memory past the block.
 			void deallocateTo(RawBlock block) {
 				deallocateTo(block.getPtr());
 			}
 
+			/// Deallocates all memory past the pointer.
 			void deallocateTo(void * ptr) {
 				next_ = static_cast<ElementPtr>(ptr);
 			}
 
+			/// Resets the stack.
 			void deallocateAll() {
 				next_ = getBegin();
 			}
 
-			bool expand(RawBlock & block, SizeType amount) {
-				ElementPtr ptr {static_cast<ElementPtr>(block.getPtr())};
+			/// Only works if the block is on top or the new size is
+			/// equal to the block's size. Also fails if the container can't
+			/// hold the new size.
+			bool reallocate(RawBlock & block, SizeType newSize) {
+				newSize = calcNeededSize(newSize);
 
 				if (isTop(block)) {
-					if (calcRemaining() >= amount) {
-						block.getSize() += amount;
-						next_           += amount;
-
+					if (newSize < block.getSize()) {
+						next_ -= block.getSize() - newSize;
+						block.getSize() = newSize;
 						return true;
 					}
+
+					else if (block.getSize() > newSize){
+						auto difference = newSize - block.getSize();
+						return expandTop(block, difference);
+					}
 				}
+
+				if (newSize == block.getSize())
+					return true;
 
 				return false;
 			}
 
-			bool owns(RawBlock block) {
+			/// Only works if the block is on top or the new size is 0.
+			/// Also fails if the container can't hold the extra amount.
+			bool expand(RawBlock & block, SizeType amount) {
+				if (isTop(block)) {
+					if (expandTop(block, amount))
+						return true;
+				}
+				else if (amount == 0)
+					return true;
+
+				return false;
+			}
+
+			/// Checks if the block points to within the container.
+			bool owns(RawBlock block) const {
 				return (getBegin() <= block.getPtr() && block.getPtr() < getEnd());
 			}
 
-			bool isEmpty() {
+			bool isEmpty() const {
 				return (next_ == getBegin());
 			}
 
-			bool isFull() {
+			bool isFull() const {
 				return (next_ == getEnd());
 			}
 
+			/// Checks if a block is at the back of the container.
 			bool isTop(RawBlock block) const {
-				auto blockEnd {
-					static_cast<ElementPtr>(block.getPtr()) + block.getSize()
-				};
+				auto blockEnd =
+					static_cast<ElementPtr>(block.getPtr()) + block.getSize();
 
 				return (blockEnd == next_);
 			}
 
+			/// Calculates the remaining space in the container.
 			SizeType calcRemaining() const {
 				return getEnd() - next_;
 			}
@@ -129,6 +158,17 @@ public:
 			using ElementType      = char;
 			using ElementPtr       = ElementType       *;
 			using ElementConstPtr  = ElementType const *;
+
+			bool expandTop(RawBlock & block, SizeType amount) {
+				if (calcRemaining() >= amount) {
+					block.getSize() += amount;
+					next_           += amount;
+
+					return true;
+				}
+
+				return false;
+			}
 
 			ElementPtr      getBegin()       { return Policy::getArray().data(); }
 			ElementConstPtr getBegin() const { return Policy::getArray().data(); }

@@ -27,6 +27,7 @@ namespace bridgerrholt {
 class BitmappedBlock
 {
 	public:
+		template <class T>
 		class ArrayElement {
 			public:
 				void clearBits() { data_ = 0; }
@@ -45,15 +46,15 @@ class BitmappedBlock
 
 
 			private:
-				char data_;
+				T data_;
 		};
 
 
-		static_assert(std::is_pod<ArrayElement>::value,
+		using ElementType = ArrayElement<char>;
+
+		static_assert(std::is_pod<ElementType>::value,
 		              "BitmappedBlock::ArrayElement should be POD");
 
-
-		using ElementType = ArrayElement;
 		static constexpr std::size_t elementSize     {sizeof(ElementType)};
 		static constexpr std::size_t elementSizeBits {elementSize * CHAR_BIT};
 
@@ -241,9 +242,6 @@ class BitmappedBlock
 					std::size_t lastIndex  {getBlockIndex(byte, bit)};
 					std::size_t firstIndex {lastIndex - blocksRequired + 1};
 					std::size_t index      {firstIndex};
-
-					if (!owns({getBlockPtr(firstIndex), 0}))
-						std::cout << "No own\n";
 
 					while (index <= lastIndex) {
 						setMetaBit(index);

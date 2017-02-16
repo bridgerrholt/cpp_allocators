@@ -5,6 +5,7 @@
 #include <numeric>
 #include <algorithm>
 #include <cassert>
+#include <memory>
 
 #include <allocators/wrappers/smart_allocator.h>
 #include <allocators/bitmapped_block.h>
@@ -16,6 +17,7 @@
 #include "test_base.h"
 #include "random_size_allocation_test.h"
 #include "get_time.h"
+#include "test_factory.h"
 
 
 namespace bridgerrholt {
@@ -263,7 +265,7 @@ class BestAllocator {
 };
 
 
-void runTests()
+void runTestsOld()
 {
 
 	/*using Type = long;
@@ -373,7 +375,7 @@ void runTests()
 	using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
 	NewTestType newTest {"C++ 'new'", elementCount};
 
-	/*using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
+	using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
 	AllocatorTestType allocatorTest {"Template Bitmap", elementCount};
 
 	using SemiFreeListTestType = RandomSizeAllocationTest<SemiFreeListAllocator, AllocatorReturnTypeSimple>;
@@ -381,17 +383,17 @@ void runTests()
 
 	using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
 	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getBlockSize(), AllocatorType::Policy::getBlockCount()}), elementCount};
-	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};*/
+	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};
 
-	//std::vector<TestBase *> tests { &newTest, &allocatorTest, &freeListTest, &runtimeTest1/*, &runtimeTest2*/};
+	std::vector<TestBase *> tests { &newTest, &allocatorTest/*, &freeListTest, &runtimeTest1, &runtimeTest2*/};
 
-	BestAllocator<elementCount>::TestType bestTest {"Best Allocator", elementCount};
+	/*BestAllocator<elementCount>::TestType bestTest {"Best Allocator", elementCount};
 
-	std::vector<TestBase *> tests { &newTest, &bestTest };
+	std::vector<TestBase *> tests { &newTest, &bestTest };*/
 
 	auto testResults = runTests(tests, iterations);
 	std::vector<double> totals;
-	totals.resize(tests.size());
+	totals.reserve(tests.size());
 
 	for (std::size_t i {0}; i < testResults.size(); ++i) {
 		auto result = testResults[i];
@@ -418,10 +420,38 @@ void runTests()
 }
 
 
+template <class TestType>
+void runTests(std::size_t totalIterations,
+              TestType    test,
+							std::vector<std::shared_ptr<TestFactoryBase>> factories)
+{
+
+}
+
+
+class DummyTest : TestBase
+{
+	public:
+		DummyTest(std::string name) : TestBase(std::move(name)) {}
+
+		void initialize() {};
+		void construct()  {};
+		void destruct()   {};
+
+		void restart() {};
+};
+
+
 int main(int argc, char* argv[])
 {
 	try {
-		runTests();
+		/*using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
+
+		runTests(4, 1024, {
+			std::make_shared<TestFactoryBase>(BasicTestFactory<NewTestType>("C++ 'new'"))
+		});*/
+
+		runTestsOld();
 	}
 	catch (std::exception & e) {
 		std::cout << "Main caught: " << e.what() << '\n';
