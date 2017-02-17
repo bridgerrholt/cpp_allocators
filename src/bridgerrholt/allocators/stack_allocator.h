@@ -8,7 +8,6 @@
 namespace bridgerrholt {
 	namespace allocators {
 
-
 /// Allocates by pushing to a stack and deallocates by popping from the stack.
 		class StackAllocator {
 

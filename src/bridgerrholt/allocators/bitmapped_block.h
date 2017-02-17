@@ -30,7 +30,8 @@ class BitmappedBlock
 		template <class T>
 		class ArrayElement {
 			public:
-				void clearBits() { data_ = 0; }
+				void unsetAll() { data_ =  0; }
+				void setAll()   { data_ = ~0; }
 
 				int getBit(std::size_t place) const {
 					return ((data_ >> place) & 1);
@@ -80,7 +81,7 @@ class BitmappedBlock
 
 					auto const end = this->getMetaDataSize();
 					for (std::size_t i = 0; i < end; ++i) {
-						this->getArray()[i].clearBits();
+						this->getArray()[i].unsetAll();
 					}
 
 					assert(Policy::getBlockCount() % elementSizeBits == 0);
@@ -94,23 +95,7 @@ class BitmappedBlock
 				Allocator(Allocator const &) = delete;
 
 
-				bool isEmpty() {
-					for (std::size_t i {0}; i < Policy::getBlockCount(); ++i) {
-						if (getMetaBit(i) == 1)
-							return false;
-					}
 
-					return true;
-				}
-
-				bool isFull() {
-					for (std::size_t i {0}; i < this->getBlockCount(); ++i) {
-						if (getMetaBit(i) == 0)
-							return false;
-					}
-
-					return true;
-				}
 
 				template <class T>
 				void printBits() const {
@@ -221,6 +206,50 @@ class BitmappedBlock
 #endif
 				}
 
+				bool expand(RawBlock & block, SizeType amount) {
+					if (amount == 0)
+						return true;
+
+					else {
+						auto extra = Policy::calcNeededSize(amount);
+
+						auto beginPtr =
+							static_cast<ConstPointer>(block.getPtr()) + block.getSize();
+
+						auto endPtr = beginPtr + extra;
+
+						auto beginBlock = getBlockIndex(beginPtr);
+						auto endBlock   = getBlockIndex(endPtr);
+
+						bool fits;
+
+						if (Policy::getBlockCount() < endBlock)
+							fits = false;
+
+						else {
+							fits = true;
+							for (std::size_t i {beginBlock}; i < endBlock; ++i) {
+								if (getMetaBit(i) == 1) {
+									fits = false;
+									break;
+								}
+							}
+						}
+
+						if (fits) {
+							for (std::size_t i {beginBlock}; i < endBlock; ++i) {
+								setMetaBit(i);
+							}
+
+							block.getSize() += extra;
+
+							return true;
+						}
+					}
+
+					return false;
+				}
+
 				bool owns(RawBlock block) {
 					auto ptr = static_cast<Pointer>(block.getPtr());
 
@@ -228,6 +257,35 @@ class BitmappedBlock
 						ptr >= Policy::getArray().data() + Policy::getMetaDataSize() &&
 					  ptr <  Policy::getArray().data() + Policy::getTotalSize()
 					);
+				}
+
+				bool isEmpty() const {
+					for (std::size_t i {0}; i < Policy::getBlockCount(); ++i) {
+						if (getMetaBit(i) == 1)
+							return false;
+					}
+
+					return true;
+				}
+
+				bool isFull() const {
+					for (std::size_t i {0}; i < this->getBlockCount(); ++i) {
+						if (getMetaBit(i) == 0)
+							return false;
+					}
+
+					return true;
+				}
+
+				SizeType calcRemaining() const {
+					SizeType emptyBlockCount {0};
+
+					for (std::size_t i {0}; i < this->getBlockCount(); ++i) {
+						if (getMetaBit(i) == 0)
+							++emptyBlockCount;
+					}
+
+					return emptyBlockCount * Policy::getBlockSize();
 				}
 
 
@@ -262,7 +320,11 @@ class BitmappedBlock
 				}
 
 
-				SizeType getBlockIndex(Pointer blockPtr) const {
+				SizeType getBlockIndex(void const * blockPtr) const {
+					return getBlockIndex(static_cast<Pointer>(blockPtr));
+				}
+
+				SizeType getBlockIndex(ConstPointer blockPtr) const {
 					auto normal =
 						blockPtr - Policy::getArray().data() - Policy::getMetaDataSize();
 					return (normal / Policy::getBlockSize());

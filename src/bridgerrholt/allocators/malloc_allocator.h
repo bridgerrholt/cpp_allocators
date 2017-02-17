@@ -9,6 +9,7 @@
 namespace bridgerrholt {
 	namespace allocators {
 
+/// A simple wrapper of the malloc family of functions.
 class MallocAllocator
 {
 	public:
@@ -20,6 +21,23 @@ class MallocAllocator
 
 		void * allocatePtr(SizeType size) const {
 			return std::malloc(size);
+		}
+
+		/// TODO: allocateAligned(SizeType size, SizeType alignment)
+
+		bool reallocate(RawBlock & block, SizeType newSize) const {
+			return reallocate(block.getPtrRef(), newSize);
+		}
+
+		bool reallocate(void * & ptr, SizeType newSize) const {
+			void * newPtr {std::realloc(ptr, newSize)};
+
+			if (newPtr != nullptr) {
+				ptr = newPtr;
+				return true;
+			}
+
+			else return false;
 		}
 
 		constexpr void deallocate(NullBlock) const {}

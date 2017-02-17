@@ -9,75 +9,74 @@ namespace bridgerrholt {
 
 /// Chooses between two different allocators based on whether the
 /// requested size is above the threshold or not.
-		class Segregator
-{
-	public:
-		template <class t_Policy,
-			        class SmallAllocator,
-				      class LargeAllocator>
-		class Allocator : private t_Policy,
-                      private SmallAllocator,
-                      private LargeAllocator
-		{
-			public:
-				using Policy = t_Policy;
+		class Segregator {
 
-				Allocator() {}
+public:
+	template <class t_Policy,
+		        class SmallAllocator,
+			      class LargeAllocator>
+	class Allocator : private t_Policy,
+                    private SmallAllocator,
+                    private LargeAllocator {
+		public:
+			using Policy = t_Policy;
 
-				Allocator(SmallAllocator small, LargeAllocator large) :
-					SmallAllocator(small),
-					LargeAllocator(large) {}
+			Allocator() {}
 
-				RawBlock allocate(SizeType size) {
-					if (size <= Policy::getThreshold()) {
-						return SmallAllocator::allocate(size);
-					}
-					else {
-						return LargeAllocator::allocate(size);
-					}
+			Allocator(SmallAllocator small, LargeAllocator large) :
+				SmallAllocator(std::move(small)),
+				LargeAllocator(std::move(large)) {}
+
+			RawBlock allocate(SizeType size) {
+				if (size <= Policy::getThreshold()) {
+					return SmallAllocator::allocate(size);
+				}
+				else {
+					return LargeAllocator::allocate(size);
+				}
+			}
+
+			constexpr void deallocate(NullBlock) {}
+
+			void deallocate(RawBlock block) {
+				if (block.getSize() <= Policy::getThreshold()) {
+					SmallAllocator::deallocate(block);
 				}
 
-				constexpr void deallocate(NullBlock) {}
-
-				void deallocate(RawBlock block) {
-					if (block.getSize() <= Policy::getThreshold()) {
-						SmallAllocator::deallocate(block);
-					}
-
-					else {
-						LargeAllocator::deallocate(block);
-					}
+				else {
+					LargeAllocator::deallocate(block);
 				}
+			}
 
-				bool owns(RawBlock block) {
-					return (SmallAllocator::owns(block) ||
-						      LargeAllocator::owns(block));
-				}
-		};
+			bool owns(RawBlock block) {
+				return (SmallAllocator::owns(block) ||
+					      LargeAllocator::owns(block));
+			}
+	};
 
 
-		class RuntimePolicy {
-			public:
-				RuntimePolicy(SizeType threshold) : threshold_ {threshold} {}
+	class RuntimePolicy {
+		public:
+			RuntimePolicy(SizeType threshold) : threshold_ {threshold} {}
 
-			private:
-				SizeType threshold_;
-		};
+		private:
+			SizeType threshold_;
+	};
 
-		template <SizeType threshold>
-		class TemplatedPolicy {
-			public:
-				static constexpr SizeType getThreshold() { return threshold; }
-		};
+	template <SizeType threshold>
+	class TemplatedPolicy {
+		public:
+			static constexpr SizeType getThreshold() { return threshold; }
+	};
 
-		template <class SmallAllocator, class LargeAllocator>
-		using Runtime =
-			Allocator<RuntimePolicy, SmallAllocator, LargeAllocator>;
+	template <class SmallAllocator, class LargeAllocator>
+	using Runtime =
+		Allocator<RuntimePolicy, SmallAllocator, LargeAllocator>;
 
-		template <class SmallAllocator, class LargeAllocator, SizeType threshold>
-		using Templated =
-			Allocator<
-				TemplatedPolicy<threshold>, SmallAllocator, LargeAllocator>;
+	template <class SmallAllocator, class LargeAllocator, SizeType threshold>
+	using Templated =
+		Allocator<
+			TemplatedPolicy<threshold>, SmallAllocator, LargeAllocator>;
 
 };
 
