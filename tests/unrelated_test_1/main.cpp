@@ -49,27 +49,60 @@ int main(int argc, char* argv[])
 
 	t.deallocate(i);*/
 
-	using Template = BitmappedBlock::Templated<VectorArray, 16, 16>;
+	using Template = BitmappedBlock::Templated<VectorArray, 16, 8>;
 
 	Template t;
 
 	t.printMeta();
 	std::cout << std::endl;
 
-	auto i = t.allocate(16);
-	auto j = t.allocate(16);
-	auto k = t.allocate(16);
+	auto a = t.allocate(16 * 4);
 
-	t.deallocate(j);
+	t.printMeta();
+	std::cout << std::endl << "reallocate 16*6\n";
+
+	t.reallocate(a, 16 * 6);
+
+	t.printMeta();
+	std::cout << std::endl << "reallocate 16*4\n";
+
+	std::cout << t.reallocate(a, 16 * 4) << '\n';
+
+	t.printMeta();
+	std::cout << std::endl << "reallocate 16*16\n";
+
+	std::cout << t.reallocate(a, 16 * 16) << '\n';
+
+	t.printMeta();
+	std::cout << std::endl << "reallocate 16*4\n";
+
+	std::cout << t.reallocate(a, 16 * 4) << '\n';
 
 	t.printMeta();
 	std::cout << std::endl;
-	std::cout << i.getPtr() << " " << i.getSize() << '\n';
 
-	std::cout << t.expand(k, 16 * 13) << '\n';
+	t.deallocateAll();
 
 	t.printMeta();
 	std::cout << std::endl;
-	std::cout << i.getPtr() << " " << i.getSize() << '\n';
+
+	auto b = t.allocate(16 * 1);
+	auto c = t.allocate(16 * 1);
+
+	t.printMeta();
+	std::cout << std::endl << "reallocate 16*2\n";
+
+	t.reallocate(b, 16 * 2);
+
+	t.printMeta();
+	std::cout << std::endl << "reallocate 16*4\n";
+
+	t.reallocate(c, 16 * 4);
+
+	t.printMeta();
+	std::cout << std::endl;
+
+
+
 
 }

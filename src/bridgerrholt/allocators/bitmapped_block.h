@@ -79,10 +79,7 @@ class BitmappedBlock
 					Policy                 {std::move(policy)},
 					lastInsertionMetaByte_ {0} {
 
-					auto const end = this->getMetaDataSize();
-					for (std::size_t i = 0; i < end; ++i) {
-						this->getArray()[i].unsetAll();
-					}
+					deallocateAll();
 
 					assert(Policy::getBlockCount() % elementSizeBits == 0);
 				}
@@ -95,7 +92,9 @@ class BitmappedBlock
 				Allocator(Allocator const &) = delete;
 
 
-
+				constexpr SizeType calcNeededSize(SizeType size) const {
+					return Policy::calcNeededSize(size);
+				}
 
 				template <class T>
 				void printBits() const {
@@ -175,6 +174,17 @@ class BitmappedBlock
 					return RawBlock::makeNullBlock();
 				}
 
+				constexpr RawBlock allocateAll() {
+					auto const end = this->getMetaDataSize();
+					for (std::size_t i = 0; i < end; ++i) {
+						Policy::getArray()[i].setAll();
+					}
+
+					return {getBlockPtr(0), Policy::getStorageSize()};
+				}
+
+
+
 				constexpr void deallocate(NullBlock) {}
 
 				void deallocate(RawBlock block) {
@@ -204,6 +214,47 @@ class BitmappedBlock
 #ifdef BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_DEALLOCATION
 					lastInsertionMetaByte_ = getMetaIndex(getBlockIndex(ptr));
 #endif
+				}
+
+				void deallocateAll() {
+					auto const end = Policy::getMetaDataSize();
+					for (std::size_t i = 0; i < end; ++i) {
+						Policy::getArray()[i].unsetAll();
+					}
+
+					lastInsertionMetaByte_ = 0;
+				}
+
+				bool reallocate(RawBlock & block, SizeType newSize) {
+					newSize = Policy::calcNeededSize(newSize);
+					auto const blockSize = block.getSize();
+
+					if (newSize < blockSize) {
+						auto blockToDeallocate = splitBlockUnchecked(block, newSize);
+						deallocate(blockToDeallocate);
+						return true;
+					}
+
+					else if (newSize == blockSize) {
+						return true;
+					}
+
+					else {
+						if (expand(block, newSize - blockSize))
+							return true;
+						else {
+							auto newBlock = allocate(newSize);
+
+							if (newBlock.isNull())
+								return false;
+
+							else {
+								deallocate(block);
+								block = newBlock;
+								return true;
+							}
+						}
+					}
 				}
 
 				bool expand(RawBlock & block, SizeType amount) {
@@ -288,6 +339,17 @@ class BitmappedBlock
 					return emptyBlockCount * Policy::getBlockSize();
 				}
 
+				RawBlock splitBlock(RawBlock & block, SizeType firstBlockSize) const {
+					firstBlockSize = calcNeededSize(firstBlockSize);
+
+					if (firstBlockSize >= block.getSize())
+						return RawBlock::makeNullBlock();
+
+					else {
+						return splitBlockUnchecked(block, firstBlockSize);
+					}
+				}
+
 
 			private:
 				using Pointer      = ElementType       *;
@@ -319,9 +381,19 @@ class BitmappedBlock
 					return toReturn;
 				}
 
+				RawBlock splitBlockUnchecked(RawBlock & block,
+				                             SizeType   firstBlockSize) const {
+					auto difference = block.getSize() - firstBlockSize;
+					block.getSize() = firstBlockSize;
+
+					return {
+						block.getEnd(), difference
+					};
+				}
+
 
 				SizeType getBlockIndex(void const * blockPtr) const {
-					return getBlockIndex(static_cast<Pointer>(blockPtr));
+					return getBlockIndex(static_cast<ConstPointer>(blockPtr));
 				}
 
 				SizeType getBlockIndex(ConstPointer blockPtr) const {

@@ -10,6 +10,7 @@
 namespace bridgerrholt {
 	namespace allocators {
 
+/// Contains the size in bytes.
 class BlockBase
 {
 	public:
@@ -62,7 +63,7 @@ class BlockBaseTemplate : public BlockBase
 		friend bool operator==(BlockBaseTemplate const & first,
 		                       BlockBaseTemplate const & second) {
 			return (
-				(static_cast<BlockBase const &>(first) == second) &&
+				static_cast<BlockBase const &>(first) == second &&
 				first.getPtr() == second.getPtr()
 			);
 		}
@@ -104,6 +105,18 @@ class BasicBlock : public BlockBaseTemplate<T>
 			BasicBlock(static_cast<Pointer>(block.getPtr()), block.getSize()) {}
 
 
+		constexpr Pointer getEnd() {
+			return (BaseType::getPtr() + getElementCount());
+		}
+
+		constexpr ConstPointer getEnd() const {
+			return (BaseType::getPtr() + getElementCount());
+		}
+
+		constexpr SizeType getElementCount() const {
+			return (BaseType::getSize() / sizeof(Type));
+		}
+
 		Reference      operator*()       { return *BaseType::getPtr(); }
 		ConstReference operator*() const { return *BaseType::getPtr(); }
 
@@ -134,6 +147,21 @@ class BasicBlock<void> : public BlockBaseTemplate<void>
 		template <class C>
 		BasicBlock(BasicBlock<C> block) :
 			BasicBlock {static_cast<Pointer>(block.getPtr()), block.getSize()} {}
+
+		constexpr char * getCharPtr() {
+			return static_cast<char*>(BaseType::getPtr());
+		}
+		constexpr char const * getCharPtr() const {
+			return static_cast<char const *>(BaseType::getPtr());
+		}
+
+		constexpr Pointer getEnd() {
+			return (getCharPtr() + BaseType::getSize());
+		}
+
+		constexpr ConstPointer getEnd() const {
+			return (getCharPtr() + BaseType::getSize());
+		}
 };
 
 
