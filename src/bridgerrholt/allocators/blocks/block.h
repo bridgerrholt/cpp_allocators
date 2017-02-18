@@ -17,8 +17,8 @@ class BlockBase
 		constexpr BlockBase() : BlockBase(0) {}
 		constexpr BlockBase(SizeType size) : size_ {size} {}
 
-		SizeType   getSize() const { return size_; }
-		SizeType & getSize()       { return size_; }
+		constexpr SizeType   getSize() const { return size_; }
+		constexpr SizeType & getSize()       { return size_; }
 
 
 		friend bool operator==(BlockBase const & first,
@@ -52,13 +52,13 @@ class BlockBaseTemplate : public BlockBase
 			ptr_      {ptr} {}
 
 
-		bool isNull() const { return (ptr_ == nullptr); }
+		constexpr bool isNull() const { return (ptr_ == nullptr); }
 
-		ConstPointer getPtr() const { return ptr_; }
-		Pointer      getPtr()       { return ptr_; }
-		Pointer &    getPtrRef()    { return ptr_; }
+		constexpr ConstPointer getPtr() const { return ptr_; }
+		constexpr Pointer      getPtr()       { return ptr_; }
+		constexpr Pointer &    getPtrRef()    { return ptr_; }
 
-		operator bool() const { return (getPtr() != nullptr); }
+		constexpr operator bool() const { return (getPtr() != nullptr); }
 
 		friend bool operator==(BlockBaseTemplate const & first,
 		                       BlockBaseTemplate const & second) {
