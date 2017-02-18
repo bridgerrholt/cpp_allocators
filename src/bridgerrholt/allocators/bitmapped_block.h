@@ -4,6 +4,8 @@
 #define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_ALLOCATION
 #define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_DEALLOCATION
 
+//#define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_3_STAGE_ALLOCATION
+
 #include <iostream>
 #include <array>
 #include <vector>
@@ -89,14 +91,14 @@ class BitmappedBlock
 					using std::swap;
 
 					swap(static_cast<Policy&>(first),  static_cast<Policy&>(second));
-					swap(first.lastInsertionMetaByte_, second.lastInsertionMetaByte_);
+					swap(first.allocateByteHint_,      second.allocateByteHint_);
 				}
 
 				Allocator() : Allocator(Policy()) {}
 
 				constexpr Allocator(Policy policy) :
 					Policy                 (std::move(policy)),
-					lastInsertionMetaByte_ {0} {
+					allocateByteHint_ {0} {
 
 					deallocateAll();
 
@@ -113,8 +115,15 @@ class BitmappedBlock
 				Allocator(Allocator const &) = delete;
 
 
-				constexpr SizeType calcNeededSize(SizeType size) const {
-					return Policy::calcNeededSize(size);
+				constexpr SizeType calcNeededSize(SizeType desiredSize) const {
+					if (desiredSize == 0) {
+						return getAttributes().getBlockSize();
+					}
+					else {
+						return common::roundUpToMultiple(
+							desiredSize, getAttributes().getBlockSize()
+						);
+					}
 				}
 
 				template <class T>
@@ -129,7 +138,7 @@ class BitmappedBlock
 				}
 
 				void printMeta() const {
-					for (SizeType i {0}; i < Policy::getBlockCount(); ++i) {
+					for (SizeType i {0}; i < getAttributes().getBlockCount(); ++i) {
 						std::cout << getMetaBit(i);
 					}
 				}
@@ -145,34 +154,32 @@ class BitmappedBlock
 				}
 
 				RawBlock allocateBlocks(SizeType blockCount) {
-					return allocate(Policy::getBlockSize() * blockCount);
+					return allocate(getAttributes().getBlockSize() * blockCount);
 				}
 
 				RawBlock allocate(SizeType size) {
 					// An allocation takes place even if the size is 0.
-					size = Policy::calcNeededSize(size);
+					size = calcNeededSize(size);
 
 					// The amount of blocks that must be reserved for the allocation.
-					std::size_t blocksRequired {size / Policy::getBlockSize()};
+					std::size_t blocksRequired {size / getAttributes().getBlockSize()};
 
 					// The block count must be divisible by the element size in bits.
 					std::size_t const metaEnd {
-						Policy::getBlockCount() / arrayElementSizeBits
+						getAttributes().getBlockCount() / arrayElementSizeBits
 					};
 
-					/// Bad code
-					auto ptr = attemptAllocation(blocksRequired, lastInsertionMetaByte_, metaEnd);
-					if (ptr != nullptr)
-						goto success;
+					// Try to allocate from the hint to the end then from 0 to the hint.
+					auto ptr =
+						attemptAllocation(blocksRequired, allocateByteHint_, metaEnd);
 
-					ptr = attemptAllocation(blocksRequired, 0, lastInsertionMetaByte_);
+					if (ptr == nullptr)
+						ptr = attemptAllocation(blocksRequired, 0, allocateByteHint_);
+
 					if (ptr != nullptr)
-						goto success;
+						return {ptr, size};
 
 					return RawBlock::makeNullBlock();
-
-				success:
-					return {ptr, size};
 				}
 
 				constexpr RawBlock allocateAll() {
@@ -194,7 +201,7 @@ class BitmappedBlock
 
 						// The amount of blocks it takes up.
 						std::size_t blocks {
-							block.getSize() / Policy::getBlockSize()
+							block.getSize() / getAttributes().getBlockSize()
 						};
 
 						std::size_t blockIndexStart {getBlockIndex(ptr)};
@@ -208,7 +215,7 @@ class BitmappedBlock
 						}
 
 #ifdef BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_DEALLOCATION
-						lastInsertionMetaByte_ = getMetaIndex(getBlockIndex(ptr));
+						allocateByteHint_ = getMetaIndex(getBlockIndex(ptr));
 #endif
 					}
 
@@ -222,13 +229,13 @@ class BitmappedBlock
 				}
 
 				constexpr void deallocateAll() {
-					auto const end = Policy::getMetaDataSize();
+					auto const end = getAttributes().getMetaDataSize();
 
 					for (SizeType i {0}; i < end; ++i) {
 						Policy::getElements()[i].unsetAll();
 					}
 
-					lastInsertionMetaByte_ = 0;
+					allocateByteHint_ = 0;
 				}
 
 				bool reallocate(RawBlock & block, SizeType newSize) {
@@ -308,8 +315,8 @@ class BitmappedBlock
 					auto ptr = static_cast<Pointer>(block.getPtr());
 
 					return (
-						ptr >= Policy::getElements() + Policy::getMetaDataSize() &&
-					  ptr <  Policy::getElements() + Policy::getTotalSize()
+						ptr >= Policy::getElements() + getAttributes().getMetaDataSize() &&
+					  ptr <  Policy::getElements() + getAttributes().getTotalSize()
 					);
 				}
 
@@ -391,15 +398,60 @@ class BitmappedBlock
 					return nullptr;
 				}
 
-				Pointer guaranteedAllocate(std::size_t byte,
-				                           int         bit,
-				                           std::size_t blocksRequired) {
+				Pointer guaranteedAllocate(SizeType byte,
+				                           int      bit,
+				                           SizeType blocksRequired) {
 					// Set all the meta bits to indicate occupation of the blocks.
 					std::size_t lastIndex  {getBlockIndex(byte, bit)};
 					std::size_t firstIndex {lastIndex - blocksRequired + 1};
 					std::size_t index      {firstIndex};
 
-					// TODO: Optimize into 3 stages.
+#ifdef BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_3_STAGE_ALLOCATION
+
+					auto startByte = getMetaIndex   (firstIndex);
+					auto startBit  = getMetaBitIndex(firstIndex);
+
+					auto firstBits = arrayElementSizeBits - startBit;
+					if (firstBits > blocksRequired)
+						firstBits = static_cast<unsigned int>(blocksRequired);
+
+					auto remaining = blocksRequired - firstBits;
+
+					auto bytes    = remaining / arrayElementSizeBits;
+					auto lastBits = remaining % arrayElementSizeBits;
+
+					auto bitIndex = startBit;
+					auto bitEnd   = startBit + firstBits;
+					while (bitIndex < bitEnd) {
+						setMetaBit(startByte, bitIndex);
+						++bitIndex;
+					}
+
+					auto byteIndex = startByte + 1;
+					auto byteEnd   = byteIndex + bytes;
+					while (byteIndex < byteEnd) {
+						Policy::getElements()[byteIndex].setAll();
+
+						++byteIndex;
+					}
+
+					bitIndex = 0;
+					bitEnd   = bitIndex + lastBits;
+					while (bitIndex < bitEnd) {
+						setMetaBit(byteEnd, bitIndex);
+						++bitIndex;
+					}
+
+#ifdef BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_ALLOCATION
+					auto toSet = lastIndex + 1;
+					if (toSet == getAttributes().getBlockCount())
+						allocateByteHint_ = 0;
+					else
+						allocateByteHint_ = getMetaIndex(toSet);
+#endif
+
+
+#else
 					while (index <= lastIndex) {
 						setMetaBit(index);
 
@@ -408,10 +460,12 @@ class BitmappedBlock
 
 #ifdef BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_ALLOCATION
 					// index should be 1 past lastIndex.
-					if (index == Policy::getBlockCount())
-						lastInsertionMetaByte_ = 0;
+					if (index == getAttributes().getBlockCount())
+						allocateByteHint_ = 0;
 					else
-						lastInsertionMetaByte_ = getMetaIndex(index);
+						allocateByteHint_ = getMetaIndex(index);
+#endif
+
 #endif
 
 					auto toReturn = getBlockPtr(firstIndex);
@@ -428,15 +482,19 @@ class BitmappedBlock
 					};
 				}
 
+				constexpr typename
+				Policy::AttributesReturnType getAttributes() const {
+					return Policy::getAttributes();
+				}
 
 				SizeType getBlockIndex(void const * blockPtr) const {
 					return getBlockIndex(static_cast<ConstPointer>(blockPtr));
 				}
 
 				SizeType getBlockIndex(ConstPointer blockPtr) const {
-					auto normal =
-						blockPtr - Policy::getElements() - Policy::getMetaDataSize();
-					return (normal / Policy::getBlockSize());
+					auto normal = blockPtr - Policy::getElements() -
+					              getAttributes().getMetaDataSize();
+					return (normal / getAttributes().getBlockSize());
 				}
 
 
@@ -463,7 +521,8 @@ class BitmappedBlock
 				}
 
 				SizeType getBlockPtrOffset(SizeType blockIndex) const {
-					return Policy::getMetaDataSize() + (blockIndex * Policy::getBlockSize());
+					return getAttributes().getMetaDataSize() +
+						blockIndex * getAttributes().getBlockSize();
 				}
 
 
@@ -497,12 +556,13 @@ class BitmappedBlock
 
 				// Calculates how efficiently memory space is used.
 				double efficiency() {
-					return static_cast<double>(Policy::getBlockCount())
-					       / (Policy::getMetaDataSize() * arrayElementSizeBits);
+					return static_cast<double>(getAttributes().getBlockCount())
+					       / (getAttributes().getMetaDataSize() * arrayElementSizeBits);
 				}
 
-				SizeType lastInsertionMetaByte_;
+				SizeType allocateByteHint_;
 		};
+
 
 		/// Contains values regarding information about size.
 		/// Satisfies LiteralType.
@@ -614,27 +674,34 @@ class BitmappedBlock
 	public:
 		template <template <class T> class CoreArray,
 		  std::size_t t_alignment>
-		class RuntimePolicy : public Attributes<t_alignment>,
-		                      public RuntimeArrayPolicyBase<CoreArray, t_alignment> {
+		class RuntimePolicy :
+			public RuntimeArrayPolicyBase<CoreArray, t_alignment> {
+
 			public:
 				static constexpr std::size_t alignment {t_alignment};
+
+				using AttributesType       = Attributes<alignment>;
+				using AttributesReturnType = AttributesType const &;
 
 				friend void swap(RuntimePolicy & first, RuntimePolicy & second) {
 					using std::swap;
 
-					swap(static_cast<DataType&>(first), static_cast<DataType&>(second));
-					swap(static_cast<DataType&>(first), static_cast<DataType&>(second));
+					swap(static_cast<PolicyBase&>(first),
+					     static_cast<PolicyBase&>(second));
+
+					swap(first.attributes_, second.attributes_);
 				}
 
-				RuntimePolicy(SizeType minimumBlockSize, SizeType minimumBlockCount) :
-					DataType   (minimumBlockSize, minimumBlockCount),
-					PolicyBase (DataType::getElementCount()) {}
+				RuntimePolicy(SizeType minimumBlockSize,
+				              SizeType minimumBlockCount) :
+					RuntimePolicy(AttributesType(minimumBlockSize,
+					                             minimumBlockCount)) {}
 
-				SizeType calcNeededSize(SizeType desiredSize) const {
+				/*SizeType calcNeededSize(SizeType desiredSize) const {
 					return BitmappedBlock::calcNeededSize(
 						DataType::getBlockSize(), desiredSize
 					);
-				}
+				}*/
 
 				ArrayElement * getElements() {
 					return &static_cast<ArrayElement&>(
@@ -648,11 +715,20 @@ class BitmappedBlock
 					);
 				}
 
+				AttributesReturnType getAttributes() const {
+					return attributes_;
+				}
+
 
 			private:
-				using DataType   = Attributes<t_alignment>;
 				using PolicyBase = RuntimeArrayPolicyBase<CoreArray, alignment>;
 				using ArrayElementType = typename PolicyBase::ArrayType::value_type;
+
+				RuntimePolicy(AttributesType attributes) :
+					PolicyBase  (attributes.getElementCount()),
+				  attributes_ (std::move(attributes)) {}
+
+				AttributesType attributes_;
 		};
 
 
@@ -692,7 +768,10 @@ class BitmappedBlock
 				using ArrayReturn      = typename PolicyBase::ArrayReturn;
 				using ArrayConstReturn = typename PolicyBase::ArrayConstReturn;
 
-				static constexpr SizeType calcNeededSize(SizeType desiredSize) {
+				using AttributesType       = Attributes<alignment>;
+				using AttributesReturnType = AttributesType;
+
+				/*static constexpr SizeType calcNeededSize(SizeType desiredSize) {
 					return BitmappedBlock::calcNeededSize(getBlockSize(), desiredSize);
 				}
 
@@ -712,7 +791,11 @@ class BitmappedBlock
 					{ return getAttributes().getBlockSize(); }
 
 				static constexpr SizeType getBlockCount()
-					{ return getAttributes().getBlockCount(); }
+					{ return getAttributes().getBlockCount(); }*/
+
+				static constexpr AttributesReturnType getAttributes() {
+					return {minimumBlockSize, t_blockCount};
+				};
 
 				ArrayElement * getElements() {
 					return &static_cast<ArrayElement&>(
@@ -728,10 +811,6 @@ class BitmappedBlock
 
 
 			private:
-				static constexpr Attributes<alignment> getAttributes() {
-					return {minimumBlockSize, t_blockCount};
-				};
-
 				using ArrayElementType = typename PolicyBase::ArrayType::value_type;
 		};
 

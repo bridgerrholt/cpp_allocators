@@ -104,6 +104,19 @@ int main(int argc, char* argv[])
 	auto d = allocatePrint(t, 4);
 	auto e = allocatePrint(t, 3);
 
+	t.deallocateAll();
+
+	std::cout << std::endl;
+
+	BitmappedBlock::Templated<VectorArray, 8, 32, 8> t2;
+
+	printMeta(t2);
+
+	allocatePrint(t2, 4);
+	allocatePrint(t2, 14);
+	allocatePrint(t2, 8);
+	allocatePrint(t2, 6);
+
 	/*Template t;
 
 	printMeta(t);
