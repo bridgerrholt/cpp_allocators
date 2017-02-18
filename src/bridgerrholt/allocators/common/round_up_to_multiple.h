@@ -4,10 +4,10 @@
 namespace bridgerrholt {
 			namespace common {
 
-template <class T>
-constexpr T roundUpToMultiple(T numberToRound, T factor) {
-	T toReturn {numberToRound};
-	T remainder {toReturn % factor};
+template <class T1, class T2 = T1>
+constexpr T1 roundUpToMultiple(T1 numberToRound, T2 factor) {
+	T1 toReturn  {numberToRound};
+	T1 remainder {toReturn % factor};
 
 	if (remainder != 0)
 		toReturn += factor - remainder;
