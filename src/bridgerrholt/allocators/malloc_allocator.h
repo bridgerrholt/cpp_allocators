@@ -13,24 +13,18 @@ namespace bridgerrholt {
 class MallocAllocator
 {
 	public:
+		using Handle = void *;
+
 		constexpr MallocAllocator() {}
 
-		RawBlock allocate(SizeType size) const {
-			return {allocatePtr(size), size};
-		}
-
-		void * allocatePtr(SizeType size) const {
+		Handle allocate(SizeType size) const {
 			return std::malloc(size);
 		}
 
 		/// TODO: allocateAligned(SizeType size, SizeType alignment)
 
-		bool reallocate(RawBlock & block, SizeType newSize) const {
-			return reallocate(block.getPtrRef(), newSize);
-		}
-
-		bool reallocate(void * & ptr, SizeType newSize) const {
-			void * newPtr {std::realloc(ptr, newSize)};
+		bool reallocate(Handle & ptr, SizeType newSize) const {
+			Handle newPtr {std::realloc(ptr, newSize)};
 
 			if (newPtr != nullptr) {
 				ptr = newPtr;
@@ -42,11 +36,7 @@ class MallocAllocator
 
 		constexpr void deallocate(NullBlock) const {}
 
-		void deallocate(RawBlock block) const {
-			deallocate(block.getPtr());
-		}
-
-		void deallocate(void * ptr) const {
+		void deallocate(Handle ptr) const {
 			std::free(ptr);
 		}
 };

@@ -8,6 +8,7 @@
 
 #include <allocators/stack_allocator.h>
 #include <allocators/bitmapped_block.h>
+#include <allocators/affix_allocator.h>
 #include <allocators/wrappers/allocator_wrapper.h>
 
 template <class T>
@@ -65,89 +66,26 @@ void deallocatePrint(T & t, bridgerrholt::allocators::RawBlock block) {
 	printMeta(t);
 }
 
+
+
 int main(int argc, char* argv[])
 {
 	using namespace bridgerrholt::allocators;
 
-	/*using Template = StackAllocator::Templated<VectorArray, 16>;
-	using Runtime  = StackAllocator::Runtime  <VectorWrapper>;
+	using Type = int;
+	using CoreAllocator = StackAllocator::Templated<VectorArray, 256>;
+	using Affix = VarWrapper<int, 123>;
+	using AllocatorBase = AffixChecker<CoreAllocator, Affix>;
+	using Allocator = AllocatorWrapper<AllocatorBase>;
 
-	Runtime t {{16}};
+	Allocator allocator;
 
-	auto i = t.allocate(4);
-	auto j = t.allocate(4);
+	auto a = allocator.construct<Type>(INT_MIN);
+	auto b = allocator.construct<Type>(INT_MIN);
+	auto c = allocator.construct<Type>(INT_MIN);
 
-	std::cout << i.getPtr() << ' ' << i.getSize() << '\n';
-	std::cout << j.getPtr() << ' ' << j.getSize() << '\n';
-
-	std::cout << t.reallocate(i, 8) << '\n';
-
-	std::cout << i.getPtr() << ' ' << i.getSize() << '\n';
-
-	t.deallocate(j);
-
-	std::cout << t.reallocate(i, 8) << '\n';
-
-	std::cout << i.getPtr() << ' ' << i.getSize() << '\n';
-
-	t.deallocate(i);*/
-
-	using Template = BitmappedBlock::Templated<VectorArray, 8, 16, 8>;
-
-	Template t;
-
-	printMeta(t);
-
-	auto a = allocatePrint(t, 3);
-	auto b = allocatePrint(t, 7);
-	deallocatePrint(t, a);
-	auto d = allocatePrint(t, 4);
-	auto e = allocatePrint(t, 3);
-
-	t.deallocateAll();
-
-	std::cout << std::endl;
-
-	BitmappedBlock::Templated<VectorArray, 8, 32, 8> t2;
-
-	printMeta(t2);
-
-	allocatePrint(t2, 4);
-	allocatePrint(t2, 14);
-	allocatePrint(t2, 8);
-	allocatePrint(t2, 6);
-
-	/*Template t;
-
-	printMeta(t);
-
-	auto a = t.allocate(8 * 4);
-	auto b = t.allocate(8 * 4);
-	auto const start = a.getPtr();
-
-	printMeta(t);
-
-	using Type = uint64_t;
-
-	setArrayElements<Type>(a.getPtr(), 4, 7);
-
-	std::cout << a.getPtr() << "\n";
-	std::cout << formatArray<Type>(start, 16) << '\n';
-
-	std::cout << "Reallocate: " << t.reallocate(a, 8 * 8) << '\n';
-
-	printMeta(t);
-
-	std::cout << a.getPtr() << " (start+" << ((a.getCharPtr() - (char*)start) / 8) << ")\n";
-	std::cout << formatArray<Type>(start, 16) << '\n';
-
-	using TemplatedAlign = BitmappedBlock::Templated<VectorArray, 16, 8, 16>;
-	std::cout << TemplatedAlign::Policy::getBlockSize() << ' ' <<
-	             TemplatedAlign::Policy::getBlockCount() << ' ' <<
-	             TemplatedAlign::Policy::alignment << '\n';
-
-	TemplatedAlign tA;
-	auto i = tA.allocate(1);
-	std::cout << reinterpret_cast<uintptr_t>(i.getPtr()) % TemplatedAlign::Policy::alignment << '\n';*/
+	allocator.deallocate(c);
+	allocator.deallocate(b);
+	allocator.deallocate(a);
 
 }
