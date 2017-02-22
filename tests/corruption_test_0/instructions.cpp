@@ -13,13 +13,17 @@ InstructionBase::InstructionBase(Type type) : type_ {type} {}
 InstructionBase::~InstructionBase() {}
 
 
+
 // Operator
-Operator::Operator(std::size_t index) : index_ {index} {}
+Operator::Operator(Type        type,
+                   std::size_t index) : InstructionBase (type),
+                                        index_          {index} {}
 
 
 
 // Allocator
-Allocate::Allocate(std::size_t size) : size_ {size} {}
+Allocate::Allocate(std::size_t size) : InstructionBase (ALLOCATE),
+                                       size_           {size} {}
 
 bool Allocate::execute(AllocatorPolicy & allocator,
                        BlockList       & blockList)
@@ -34,8 +38,9 @@ bool Allocate::execute(AllocatorPolicy & allocator,
 }
 
 
+
 // Deallocate
-Deallocate::Deallocate(std::size_t index) : Operator(index) {}
+Deallocate::Deallocate(std::size_t index) : Operator(DEALLOCATE, index) {}
 
 bool Deallocate::execute(AllocatorPolicy & allocator,
                          BlockList       & blockList)
@@ -45,27 +50,33 @@ bool Deallocate::execute(AllocatorPolicy & allocator,
 }
 
 
+
 // Reallocate
 Reallocate::Reallocate(std::size_t index,
-                       std::size_t size) : Operator(index),
-                                           size_ {size} {}
+                       std::size_t size) : Operator (REALLOCATE, index),
+                                           size_    {size} {}
+
 
 bool Reallocate::execute(AllocatorPolicy & allocator,
-             BlockList       & blockList) override;
+                         BlockList       & blockList)
+{
+	return allocator.reallocate(blockList.at(getIndex()), getSize());
+}
 
 
 
-class Expand : public Operator {
-	public:
-		Expand::Expand();
-		Expand::Expand(std::size_t index, std::size_t amount);
+// Expand
+Expand::Expand(std::size_t index,
+               std::size_t amount) : Operator (EXPAND, index),
+                                     amount_  {amount} {}
 
-		bool Expand::execute(AllocatorPolicy & allocator,
-		             BlockList       & blockList) override;
 
-	private:
-		std::size_t amount_;
-};
+bool Expand::execute(AllocatorPolicy & allocator,
+                     BlockList       & blockList)
+{
+	return allocator.expand(blockList.at(getIndex()), getAmount());
+}
+
 
 
 			}

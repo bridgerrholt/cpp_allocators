@@ -42,7 +42,7 @@ class InstructionBase {
 class Operator : public InstructionBase {
 	public:
 		Operator() {}
-		Operator(std::size_t index);
+		Operator(Type type, std::size_t index);
 
 		std::size_t getIndex() const { return index_; }
 
@@ -68,7 +68,7 @@ class Allocate : public InstructionBase {
 
 class Deallocate : public Operator {
 	public:
-		Deallocate();
+		Deallocate() {}
 		Deallocate(std::size_t index);
 
 		bool execute(AllocatorPolicy & allocator,
@@ -78,11 +78,13 @@ class Deallocate : public Operator {
 
 class Reallocate : public Operator {
 	public:
-		Reallocate();
+		Reallocate() {}
 		Reallocate(std::size_t index, std::size_t size);
 
 		bool execute(AllocatorPolicy & allocator,
 		             BlockList       & blockList) override;
+
+		std::size_t getSize() const { return size_; }
 
 	private:
 		std::size_t size_;
@@ -91,11 +93,13 @@ class Reallocate : public Operator {
 
 class Expand : public Operator {
 	public:
-		Expand();
+		Expand() {}
 		Expand(std::size_t index, std::size_t amount);
 
 		bool execute(AllocatorPolicy & allocator,
 		             BlockList       & blockList) override;
+
+		std::size_t getAmount() const { return amount_; }
 
 	private:
 		std::size_t amount_;
