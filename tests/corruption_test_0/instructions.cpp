@@ -6,11 +6,9 @@ namespace bridgerrholt {
 			namespace instructions {
 
 // InstructionBase
-InstructionBase::InstructionBase() : type_ {NONE} {}
+//InstructionBase::InstructionBase() : type_ {NONE} {}
 
 InstructionBase::InstructionBase(Type type) : type_ {type} {}
-
-InstructionBase::~InstructionBase() {}
 
 
 
@@ -24,6 +22,7 @@ Operator::Operator(Type        type,
 // Allocator
 Allocate::Allocate(std::size_t size) : InstructionBase (ALLOCATE),
                                        size_           {size} {}
+
 
 bool Allocate::execute(AllocatorPolicy & allocator,
                        BlockList       & blockList)
@@ -41,6 +40,7 @@ bool Allocate::execute(AllocatorPolicy & allocator,
 
 // Deallocate
 Deallocate::Deallocate(std::size_t index) : Operator(DEALLOCATE, index) {}
+
 
 bool Deallocate::execute(AllocatorPolicy & allocator,
                          BlockList       & blockList)

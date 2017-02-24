@@ -19,7 +19,7 @@ class Generator
 		                          flags_       {flags} {}
 
 		std::string generate() {
-
+			return {};
 		}
 
 

@@ -1,6 +1,8 @@
 #ifndef BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_INSTRUCTIONS_H
 #define BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_INSTRUCTIONS_H
 
+#include <iostream>
+
 #include <cstddef>
 #include <string>
 
@@ -24,10 +26,7 @@ enum Type {
 
 class InstructionBase {
 	public:
-		InstructionBase();
 		InstructionBase(Type type);
-
-		virtual ~InstructionBase() = 0;
 
 		virtual bool execute(AllocatorPolicy & allocator,
 		                     BlockList       & blockList) = 0;
@@ -41,7 +40,6 @@ class InstructionBase {
 
 class Operator : public InstructionBase {
 	public:
-		Operator() {}
 		Operator(Type type, std::size_t index);
 
 		std::size_t getIndex() const { return index_; }
@@ -53,7 +51,6 @@ class Operator : public InstructionBase {
 
 class Allocate : public InstructionBase {
 	public:
-		Allocate() {}
 		Allocate(std::size_t size);
 
 		bool execute(AllocatorPolicy & allocator,
@@ -68,7 +65,6 @@ class Allocate : public InstructionBase {
 
 class Deallocate : public Operator {
 	public:
-		Deallocate() {}
 		Deallocate(std::size_t index);
 
 		bool execute(AllocatorPolicy & allocator,
@@ -78,7 +74,6 @@ class Deallocate : public Operator {
 
 class Reallocate : public Operator {
 	public:
-		Reallocate() {}
 		Reallocate(std::size_t index, std::size_t size);
 
 		bool execute(AllocatorPolicy & allocator,
@@ -93,7 +88,6 @@ class Reallocate : public Operator {
 
 class Expand : public Operator {
 	public:
-		Expand() {}
 		Expand(std::size_t index, std::size_t amount);
 
 		bool execute(AllocatorPolicy & allocator,

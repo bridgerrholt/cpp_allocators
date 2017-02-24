@@ -1,6 +1,8 @@
 #ifndef BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_GENERATE_INSTRUCTIONS_H
 #define BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_GENERATE_INSTRUCTIONS_H
 
+#include <iostream>
+
 #include <cstddef>
 #include <string>
 
@@ -15,7 +17,8 @@ namespace bridgerrholt {
 union InstructionUnion
 {
 	public:
-		InstructionUnion();
+		InstructionUnion() {}
+		~InstructionUnion() {}
 
 		instructions::Allocate   allocate;
 		instructions::Deallocate deallocate;
