@@ -1,6 +1,8 @@
 #ifndef BRH_CPP_ALLOCATORS_BRIDGERRHOLT_ALLOCATORS_TRAITS_H
 #define BRH_CPP_ALLOCATORS_BRIDGERRHOLT_ALLOCATORS_TRAITS_H
 
+#include <utility>
+
 namespace bridgerrholt {
 	namespace allocators {
 		namespace traits {

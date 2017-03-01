@@ -33,6 +33,8 @@ class InstructionBase {
 
 		Type getType() const { return type_; }
 
+		virtual std::string makeAttributeString() const = 0;
+
 	private:
 		Type type_;
 };
@@ -56,6 +58,8 @@ class Allocate : public InstructionBase {
 		bool execute(AllocatorPolicy & allocator,
 		             BlockList       & blockList) override;
 
+		std::string makeAttributeString() const override;
+
 		std::size_t getSize() const { return size_; }
 
 	private:
@@ -69,6 +73,8 @@ class Deallocate : public Operator {
 
 		bool execute(AllocatorPolicy & allocator,
 		             BlockList       & blockList) override;
+
+		std::string makeAttributeString() const override;
 };
 
 
@@ -78,6 +84,8 @@ class Reallocate : public Operator {
 
 		bool execute(AllocatorPolicy & allocator,
 		             BlockList       & blockList) override;
+
+		std::string makeAttributeString() const override;
 
 		std::size_t getSize() const { return size_; }
 
@@ -92,6 +100,8 @@ class Expand : public Operator {
 
 		bool execute(AllocatorPolicy & allocator,
 		             BlockList       & blockList) override;
+
+		std::string makeAttributeString() const override;
 
 		std::size_t getAmount() const { return amount_; }
 

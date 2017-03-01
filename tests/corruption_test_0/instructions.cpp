@@ -36,6 +36,11 @@ bool Allocate::execute(AllocatorPolicy & allocator,
 	return true;
 }
 
+std::string Allocate::makeAttributeString() const
+{
+	return "A " + std::to_string(getSize());
+}
+
 
 
 // Deallocate
@@ -50,6 +55,11 @@ bool Deallocate::execute(AllocatorPolicy & allocator,
 }
 
 
+std::string Deallocate::makeAttributeString() const
+{
+	return "D " + std::to_string(getIndex());
+}
+
 
 // Reallocate
 Reallocate::Reallocate(std::size_t index,
@@ -61,6 +71,12 @@ bool Reallocate::execute(AllocatorPolicy & allocator,
                          BlockList       & blockList)
 {
 	return allocator.reallocate(blockList.at(getIndex()), getSize());
+}
+
+
+std::string Reallocate::makeAttributeString() const
+{
+	return "R " + std::to_string(getIndex()) + " " + std::to_string(getSize());
 }
 
 
@@ -77,6 +93,12 @@ bool Expand::execute(AllocatorPolicy & allocator,
 	return allocator.expand(blockList.at(getIndex()), getAmount());
 }
 
+
+std::string Expand::makeAttributeString() const
+{
+	return "E " + std::to_string(getIndex()) + " " +
+		            std::to_string(getAmount());
+}
 
 
 			}

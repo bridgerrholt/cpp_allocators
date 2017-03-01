@@ -3,55 +3,77 @@
 
 #include <iostream>
 
+#include <array>
 #include <cstddef>
 #include <string>
+#include <random>
+#include <limits>
 
+#include "instruction_list.h"
 #include "allocator_policy.h"
-#include "instructions.h"
+#include "bit_flags.h"
 
 namespace bridgerrholt {
 	namespace allocators {
 		namespace tests {
 
 
-union InstructionUnion
+class Generator
 {
 	public:
-		InstructionUnion() {}
-		~InstructionUnion() {}
+		enum class FlagsEnum {
+			ALLOW_REALLOCATE = 1 << 0,
+			ALLOW_EXPAND     = 1 << 1,
+			IS_STACK         = 1 << 2,
+			ALL              = (1 << 0) | (1 << 1) | (1 << 2)
+		};
 
-		instructions::Allocate   allocate;
-		instructions::Deallocate deallocate;
-		instructions::Reallocate reallocate;
-		instructions::Expand     expand;
-};
+		using Flags        = BasicBitFlags<FlagsEnum>;
+		using FlagsWrapper = typename Flags::EnumWrapperType;
 
+		Generator(
+			AllocatorPolicy & allocator,
+			std::size_t      totalSize,
+			std::size_t      minimumSize,
+			std::size_t      maximumSize,
+			Flags            flags);
 
-class Instruction
-{
-	public:
+		InstructionList generateWhole(std::ptrdiff_t seed);
+
+		InstructionList generateFillSequence(std::ptrdiff_t seed);
+		InstructionList generateMainSequence(std::ptrdiff_t seed);
+
 
 	private:
+		void generateFillSequence(InstructionList & list);
+		void generateMainSequence(InstructionList & list);
 
+		void createEngine(std::ptrdiff_t seed);
+
+		void fillWithRandom(char * firstByte, std::size_t byteCount);
+
+		using RandomEngine = std::mt19937;
+
+		AllocatorPolicy & allocator_;
+		std::size_t       totalSize_;
+		std::size_t       minimumSize_;
+		std::size_t       maximumSize_;
+		Flags             flags_;
+
+		RandomEngine randomEngine_;
 };
 
 
-enum class GeneratorFlags {
-	ALLOW_REALLOCATE = 1 << 0,
-	ALLOW_EXPAND     = 1 << 1,
-	IS_STACK         = 1 << 2
-};
 
-GeneratorFlags operator|(GeneratorFlags a, GeneratorFlags b);
-
-
-std::string generateInstructions(
-	std::size_t    totalSize,
-	std::size_t    minimumSize,
-	std::size_t    maximumSize,
-	GeneratorFlags flags =
-		GeneratorFlags::ALLOW_REALLOCATE | GeneratorFlags::ALLOW_EXPAND);
-
+InstructionList generateInstructions(
+	AllocatorPolicy & allocator,
+	std::size_t       totalSize,
+	std::size_t       minimumSize,
+	std::size_t       maximumSize,
+	Generator::Flags flags = {
+		Generator::FlagsWrapper(Generator::FlagsEnum::ALLOW_REALLOCATE) |
+		Generator::FlagsWrapper(Generator::FlagsEnum::ALLOW_EXPAND)}
+);
 
 
 
