@@ -17,12 +17,14 @@ Generator::Generator(
                              flags_       {flags} {}
 
 
-InstructionList Generator::generateWhole(std::ptrdiff_t seed) {
+InstructionList
+Generator::generateWhole(std::ptrdiff_t seed,
+                         std::size_t    minimumMainInstructions) {
 	createEngine(seed);
 
 	InstructionList list;
 	generateFillSequence(list);
-	generateMainSequence(list);
+	generateMainSequence(list, minimumMainInstructions);
 
 
 	return list;
@@ -39,11 +41,13 @@ InstructionList Generator::generateFillSequence(std::ptrdiff_t seed) {
 }
 
 
-InstructionList Generator::generateMainSequence(std::ptrdiff_t seed) {
+InstructionList
+Generator::generateMainSequence(std::ptrdiff_t seed,
+															  std::size_t    minimumInstructions) {
 	createEngine(seed);
 
 	InstructionList list;
-	generateMainSequence(list);
+	generateMainSequence(list, minimumInstructions);
 
 	return list;
 }
@@ -96,8 +100,20 @@ void Generator::generateFillSequence(InstructionList & list) {
 }
 
 
-void Generator::generateMainSequence(InstructionList & list) {
+void Generator::generateMainSequence(InstructionList & list,
+                                     std::size_t       minimumInstructions) {
+	// int instructionCount = 0
+	// loop while instructionCount < minimumInstructions
+	//   if (randomChoice(2))
+	//     --index
 
+	// A 5
+	// D 0
+
+	// A 5
+	// A 10
+	// D 1
+	// D 0
 }
 
 

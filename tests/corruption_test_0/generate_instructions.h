@@ -38,15 +38,18 @@ class Generator
 			std::size_t      maximumSize,
 			Flags            flags);
 
-		InstructionList generateWhole(std::ptrdiff_t seed);
+		InstructionList generateWhole(std::ptrdiff_t seed,
+		                              std::size_t    minimumMainInstructions);
 
 		InstructionList generateFillSequence(std::ptrdiff_t seed);
-		InstructionList generateMainSequence(std::ptrdiff_t seed);
+		InstructionList generateMainSequence(std::ptrdiff_t seed,
+		                                     std::size_t    minimumInstructions);
 
 
 	private:
 		void generateFillSequence(InstructionList & list);
-		void generateMainSequence(InstructionList & list);
+		void generateMainSequence(InstructionList & list,
+		                          std::size_t       minimumInstructions);
 
 		void createEngine(std::ptrdiff_t seed);
 
