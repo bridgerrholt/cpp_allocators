@@ -81,6 +81,10 @@ public:
 				return Policy::getBlockSize();
 			}
 
+			constexpr SizeType getStorageSize() const {
+				return Policy::getArray().size();
+			}
+
 			/// Casting and dereferencing the returned pointer is
 			/// implicitly undefined behaviour, but nothing unexpected should happen
 			/// as long as you follow casting guidelines of

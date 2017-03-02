@@ -32,6 +32,10 @@ public:
 					return desiredSize;
 			}
 
+			constexpr SizeType getStorageSize() const {
+				return Policy::getStackSize();
+			}
+
 			/// Allocates the next blocks in the container.
 			Handle allocate(SizeType size) {
 				size = calcRequiredSize(size);

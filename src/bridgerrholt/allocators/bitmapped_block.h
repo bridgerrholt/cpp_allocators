@@ -127,6 +127,10 @@ public:
 				}
 			}
 
+			constexpr SizeType getStorageSize() const {
+				return Policy::getStorageSize();
+			}
+
 			template <class T>
 			void printBits() const {
 				printMeta();

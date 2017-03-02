@@ -16,6 +16,7 @@ class AllocatorPolicy
 		virtual ~AllocatorPolicy() {}
 
 		virtual SizeType calcRequiredSize(SizeType desiredSize) const = 0;
+		virtual SizeType getStorageSize() const = 0;
 
 		virtual RawBlock allocate  (SizeType size) = 0;
 		virtual void     deallocate(RawBlock block) = 0;
@@ -42,6 +43,10 @@ class BasicAllocatorPolicy : public AllocatorPolicy
 
 		SizeType calcRequiredSize(SizeType desiredSize) const override {
 			return allocator_.calcRequiredSize(desiredSize);
+		}
+
+		SizeType getStorageSize() const override {
+			return allocator_.getStorageSize();
 		}
 
 		RawBlock allocate(SizeType size) override {
