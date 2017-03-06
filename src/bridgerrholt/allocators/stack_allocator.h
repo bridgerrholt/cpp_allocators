@@ -17,6 +17,7 @@ public:
 	{
 		public:
 			using Policy = t_Policy;
+			using Handle = RawBlock;
 
 			Allocator() : Allocator (Policy()) {}
 
@@ -24,16 +25,20 @@ public:
 			                           next_  {getBegin()} {}
 
 			/// Does nothing but turn it into 1 if it's 0.
-			static constexpr SizeType calcNeededSize(SizeType desiredSize) {
+			static constexpr SizeType calcRequiredSize(SizeType desiredSize) {
 				if (desiredSize == 0)
 					return 1;
 				else
 					return desiredSize;
 			}
 
+			constexpr SizeType getStorageSize() const {
+				return Policy::getStackSize();
+			}
+
 			/// Allocates the next blocks in the container.
-			RawBlock allocate(SizeType size) {
-				size = calcNeededSize(size);
+			Handle allocate(SizeType size) {
+				size = calcRequiredSize(size);
 
 				if (next_ <= getEnd() - size) {
 					auto ptr = next_;
@@ -41,31 +46,31 @@ public:
 					return {ptr, size};
 				}
 				else {
-					return RawBlock::makeNullBlock();
+					return Handle::makeNullBlock();
 				}
 			}
 
 			/// Effectively deallocates and then allocates the whole container.
-			RawBlock allocateAll() {
+			Handle allocateAll() {
 				next_ = getEnd();
 				return {getBegin(), getEnd() - getBegin()};
 			}
 
 			/// Allocates everything after the top of the stack.
-			RawBlock allocateRemaining() {
+			Handle allocateRemaining() {
 				if (!isFull()) {
 					auto ptr = next_;
 					next_ = getEnd();
 					return {ptr, getEnd() - ptr};
 				}
 
-				return RawBlock::makeNullBlock();
+				return Handle::makeNullBlock();
 			}
 
-			constexpr void deallocate(NullBlock) {}
+			constexpr void deallocate(NullBlock) const {}
 
 			/// Deallocates only if the block is on top.
-			void deallocate(RawBlock block) {
+			void deallocate(Handle block) {
 				if (!block.isNull()) {
 
 					if (isTop(block))
@@ -74,7 +79,7 @@ public:
 			}
 
 			/// Deallocates all memory past the block.
-			void deallocateTo(RawBlock block) {
+			void deallocateTo(Handle block) {
 				deallocateTo(block.getPtr());
 			}
 
@@ -91,23 +96,24 @@ public:
 			/// Only works if the block is on top or the new size is
 			/// equal to the block's size. Also fails if the container can't
 			/// hold the new size.
-			bool reallocate(RawBlock & block, SizeType newSize) {
-				newSize = calcNeededSize(newSize);
+			bool reallocate(Handle & block, SizeType newSize) {
+				newSize = calcRequiredSize(newSize);
+				auto const blockSize = block.getSize();
 
 				if (isTop(block)) {
-					if (newSize < block.getSize()) {
-						next_ -= block.getSize() - newSize;
-						block.getSize() = newSize;
+					if (newSize < blockSize) {
+						next_ -= blockSize - newSize;
+						block.setSize(newSize);
 						return true;
 					}
 
-					else if (block.getSize() > newSize){
-						auto difference = newSize - block.getSize();
+					else if (blockSize > newSize){
+						auto difference = newSize - blockSize;
 						return expandTop(block, difference);
 					}
 				}
 
-				if (newSize == block.getSize())
+				if (newSize == blockSize)
 					return true;
 
 				return false;
@@ -115,7 +121,7 @@ public:
 
 			/// Only works if the block is on top or the new size is 0.
 			/// Also fails if the container can't hold the extra amount.
-			bool expand(RawBlock & block, SizeType amount) {
+			bool expand(Handle & block, SizeType amount) {
 				if (isTop(block)) {
 					if (expandTop(block, amount))
 						return true;
@@ -127,7 +133,7 @@ public:
 			}
 
 			/// Checks if the block points to within the container.
-			bool owns(RawBlock block) const {
+			bool owns(Handle block) const {
 				return (getBegin() <= block.getPtr() && block.getPtr() < getEnd());
 			}
 
@@ -140,7 +146,7 @@ public:
 			}
 
 			/// Checks if a block is at the back of the container.
-			bool isTop(RawBlock block) const {
+			bool isTop(Handle block) const {
 				auto blockEnd =
 					static_cast<ElementPtr>(block.getPtr()) + block.getSize();
 
@@ -148,8 +154,12 @@ public:
 			}
 
 			/// Calculates the remaining space in the container.
-			SizeType calcRemaining() const {
-				return getEnd() - next_;
+			SizeType calcUnoccupied() const {
+				return (getEnd() - next_);
+			}
+
+			SizeType calcOccupied() const {
+				return (next_ - getBegin());
 			}
 
 
@@ -158,10 +168,10 @@ public:
 			using ElementPtr       = ElementType       *;
 			using ElementConstPtr  = ElementType const *;
 
-			bool expandTop(RawBlock & block, SizeType amount) {
-				if (calcRemaining() >= amount) {
-					block.getSize() += amount;
-					next_           += amount;
+			bool expandTop(Handle & block, SizeType amount) {
+				if (calcOccupied() >= amount) {
+					block.setSize(block.getSize() + amount);
+					next_ += amount;
 
 					return true;
 				}

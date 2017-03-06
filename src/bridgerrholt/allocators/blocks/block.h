@@ -10,15 +10,18 @@
 namespace bridgerrholt {
 	namespace allocators {
 
-/// Contains the size in bytes.
+/// Contains the size in bytes. Does not contain a pointer.
 class BlockBase
 {
 	public:
 		constexpr BlockBase() : BlockBase(0) {}
 		constexpr BlockBase(SizeType size) : size_ {size} {}
 
-		constexpr SizeType   getSize() const { return size_; }
-		constexpr SizeType & getSize()       { return size_; }
+		constexpr SizeType getSize() const { return size_; }
+
+		constexpr void setSize(SizeType size) {
+			size_ = size;
+		}
 
 
 		friend bool operator==(BlockBase const & first,
@@ -31,40 +34,140 @@ class BlockBase
 			return !(first == second);
 		}
 
+
 	private:
 		SizeType size_;
 };
 
 
-
+/// Contains only a pointer. Does not contain the size.
+/// Works correctly with void pointers.
 template <class T>
-class BlockBaseTemplate : public BlockBase
+class PtrBlockBase
 {
 	public:
 		using Type           = T;
 		using Pointer        = Type       *;
 		using ConstPointer   = Type const *;
 
-		constexpr BlockBaseTemplate() : BlockBaseTemplate(nullptr, 0) {}
+		constexpr PtrBlockBase() : PtrBlockBase(nullptr) {}
 
-		constexpr BlockBaseTemplate(Pointer ptr, SizeType size) :
-			BlockBase (size),
-			ptr_      {ptr} {}
+		constexpr PtrBlockBase(Pointer ptr) : ptr_ {ptr} {}
 
 
 		constexpr bool isNull() const { return (ptr_ == nullptr); }
 
 		constexpr ConstPointer getPtr() const { return ptr_; }
 		constexpr Pointer      getPtr()       { return ptr_; }
-		constexpr Pointer &    getPtrRef()    { return ptr_; }
+
+		constexpr void setPtr(Pointer ptr) { ptr_ = ptr; }
+
 
 		constexpr operator bool() const { return (getPtr() != nullptr); }
+
+		constexpr friend bool operator==(PtrBlockBase const & first,
+		                                 PtrBlockBase const & second) {
+			return (first.getPtr() == second.getPtr());
+		}
+
+		constexpr friend bool operator!=(PtrBlockBase const & first,
+		                                 PtrBlockBase const & second) {
+			return !(first == second);
+		}
+
+
+	private:
+		Pointer ptr_;
+};
+
+
+/// Has features that do not work with void pointers,
+/// specialization works with void pointers.
+template <class T>
+class PtrBlock : public PtrBlockBase<T>
+{
+	private:
+		using BaseType = PtrBlockBase<T>;
+
+	public:
+		using Type           = typename BaseType::Type;
+		using Pointer        = typename BaseType::Pointer;
+		using ConstPointer   = typename BaseType::ConstPointer;
+
+		using Reference      = Type &;
+		using ConstReference = Type const &;
+
+		constexpr PtrBlock() : PtrBlock(nullptr) {}
+
+		constexpr PtrBlock(Pointer ptr) : BaseType(ptr) {}
+
+
+		Reference      operator*()       { return *BaseType::getPtr(); }
+		ConstReference operator*() const { return *BaseType::getPtr(); }
+
+		Reference      operator->()       { return *BaseType::getPtr(); }
+		ConstReference operator->() const { return *BaseType::getPtr(); }
+
+		constexpr friend bool operator==(PtrBlock const & first,
+		                                 PtrBlock const & second) {
+			return (static_cast<BaseType const &>(first) == second);
+		}
+
+		constexpr friend bool operator!=(PtrBlock const & first,
+		                                 PtrBlock const & second) {
+			return !(first == second);
+		}
+};
+
+
+/// Specialization for void pointers, doesn't have all the features.
+template <>
+class PtrBlock<void> : public PtrBlockBase<void>
+{
+	private:
+		using BaseType = PtrBlockBase<void>;
+
+	public:
+		using Type           = typename BaseType::Type;
+		using Pointer        = typename BaseType::Pointer;
+		using ConstPointer   = typename BaseType::ConstPointer;
+
+		constexpr PtrBlock() : PtrBlock(nullptr) {}
+
+		constexpr PtrBlock(Pointer ptr) : BaseType(ptr) {}
+
+		constexpr char * getCharPtr() {
+			return static_cast<char*>(getPtr());
+		}
+		constexpr char const * getCharPtr() const {
+			return static_cast<char const *>(getPtr());
+		}
+};
+
+
+
+template <class T>
+class BlockBaseTemplate : public BlockBase, public PtrBlock<T>
+{
+	private:
+		using PtrBase = PtrBlock<T>;
+
+	public:
+		using Type           = typename PtrBase::Type;
+		using Pointer        = typename PtrBase::Pointer;
+		using ConstPointer   = typename PtrBase::ConstPointer;
+
+		constexpr BlockBaseTemplate() : BlockBaseTemplate(nullptr, 0) {}
+
+		constexpr BlockBaseTemplate(Pointer ptr, SizeType size) :
+			BlockBase (size),
+			PtrBase   (ptr) {}
 
 		friend bool operator==(BlockBaseTemplate const & first,
 		                       BlockBaseTemplate const & second) {
 			return (
 				static_cast<BlockBase const &>(first) == second &&
-				first.getPtr() == second.getPtr()
+				static_cast<PtrBase   const &>(first) == second
 			);
 		}
 
@@ -72,10 +175,6 @@ class BlockBaseTemplate : public BlockBase
 		                       BlockBaseTemplate const & second) {
 			return !(first == second);
 		}
-
-
-	private:
-		Pointer ptr_;
 };
 
 
@@ -148,25 +247,25 @@ class BasicBlock<void> : public BlockBaseTemplate<void>
 		BasicBlock(BasicBlock<C> block) :
 			BasicBlock {static_cast<Pointer>(block.getPtr()), block.getSize()} {}
 
-		constexpr char * getCharPtr() {
-			return static_cast<char*>(BaseType::getPtr());
-		}
-		constexpr char const * getCharPtr() const {
-			return static_cast<char const *>(BaseType::getPtr());
-		}
-
 		constexpr Pointer getEnd() {
-			return (getCharPtr() + BaseType::getSize());
+			return getEndChar();
 		}
 
 		constexpr ConstPointer getEnd() const {
+			return getEndChar();
+		}
+
+		constexpr char * getEndChar() {
+			return (getCharPtr() + BaseType::getSize());
+		}
+
+		constexpr char const * getEndChar() const {
 			return (getCharPtr() + BaseType::getSize());
 		}
 };
 
 
-
-class NullBlock : public BlockBase
+class NullBlock
 {
 	public:
 		using Pointer      = std::nullptr_t;
@@ -175,7 +274,6 @@ class NullBlock : public BlockBase
 		static constexpr NullBlock makeNullBlock() { return {}; }
 
 		constexpr NullBlock() {}
-		constexpr NullBlock(Pointer, SizeType) {}
 
 
 		constexpr bool isNull() const { return true; }
@@ -194,6 +292,7 @@ class NullBlock : public BlockBase
 };
 
 
+using RawPtr   = PtrBlock  <void>;
 using RawBlock = BasicBlock<void>;
 
 

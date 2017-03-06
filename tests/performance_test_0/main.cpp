@@ -13,6 +13,7 @@
 #include <allocators/full_free_list.h>
 #include <allocators/segregator.h>
 #include <allocators/fallback_allocator.h>
+#include <allocators/affix_allocator.h>
 
 #include "test_base.h"
 #include "random_size_allocation_test.h"
@@ -356,7 +357,11 @@ void runTestsOld()
 		>;*/
 
 	using AllocatorType =
-		LargeAllocator;
+		AffixChecker<
+			BitmappedBlock::Templated<
+				VectorWrapper, smallBlockSize, 1024 * 1024 * 4
+			>, VarWrapper<int, 123>
+		>;
 
 	using RuntimeAllocator =
 		BitmappedBlock::Runtime<VectorSingle>;
@@ -382,8 +387,8 @@ void runTestsOld()
 	SemiFreeListTestType freeListTest {"Semi- Free List", elementCount};
 
 	using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
-	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getBlockSize(), AllocatorType::Policy::getBlockCount()}), elementCount};
-	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getBlockCount() * 8}), elementCount};
+	//RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getAttributes().getBlockSize(), AllocatorType::Policy::getAttributes().getBlockCount()}), elementCount};
+	//RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getAttributes().getBlockCount() * 8}), elementCount};
 
 	std::vector<TestBase *> tests { &newTest, &allocatorTest/*, &freeListTest, &runtimeTest1, &runtimeTest2*/};
 

@@ -12,6 +12,8 @@ namespace bridgerrholt {
 		class Segregator {
 
 public:
+	/// SmallAllocator must not allocate blocks larger than the threshold if
+	/// the passed size is less than or equal to the threshold.
 	template <class t_Policy,
 		        class SmallAllocator,
 			      class LargeAllocator>
@@ -21,14 +23,23 @@ public:
 		public:
 			using Policy = t_Policy;
 
-			Allocator() {}
+			constexpr Allocator() : Allocator(SmallAllocator(),
+			                                  LargeAllocator()) {}
 
-			Allocator(SmallAllocator small, LargeAllocator large) :
+			constexpr Allocator(SmallAllocator small,
+			                    LargeAllocator large) :
 				SmallAllocator(std::move(small)),
 				LargeAllocator(std::move(large)) {}
 
+			SizeType calcRequiredSize(SizeType desiredSize) const {
+				if (belongsToSmall(desiredSize))
+					return SmallAllocator::calcRequiredSize(desiredSize);
+				else
+					return LargeAllocator::calcRequiredSize(desiredSize);
+			}
+
 			RawBlock allocate(SizeType size) {
-				if (size <= Policy::getThreshold()) {
+				if (belongsToSmall(size)) {
 					return SmallAllocator::allocate(size);
 				}
 				else {
@@ -36,10 +47,10 @@ public:
 				}
 			}
 
-			constexpr void deallocate(NullBlock) {}
+			constexpr void deallocate(NullBlock) const {}
 
 			void deallocate(RawBlock block) {
-				if (block.getSize() <= Policy::getThreshold()) {
+				if (belongsToSmall(block.getSize())) {
 					SmallAllocator::deallocate(block);
 				}
 
@@ -48,9 +59,119 @@ public:
 				}
 			}
 
-			bool owns(RawBlock block) {
+			bool reallocate(RawBlock & block, SizeType size) {
+				auto blockSize = block.getSize();
+
+				if (blockSize == size)
+					return true;
+
+				if (belongsToSmall(blockSize)) {
+					if (belongsToSmall(size))
+						return SmallAllocator::reallocate(block, size);
+					else {
+						assert(blockSize < size);
+						reallocateAcrossAllocators<SmallAllocator, LargeAllocator>(
+							block, size, blockSize
+						);
+
+						return true;
+					}
+				}
+
+				else {
+					if (belongsToLarge(size))
+						return LargeAllocator::reallocate(block, size);
+					else {
+						assert(size < blockSize);
+						reallocateAcrossAllocators<LargeAllocator, SmallAllocator>(
+							block, size, size
+						);
+
+						return true;
+					}
+				}
+			}
+
+			bool expand(RawBlock & block, SizeType amount) {
+				auto blockSize = block.getSize();
+				auto newBlockSize = blockSize + amount;
+
+				if (blockSize == newBlockSize)
+					return true;
+
+				if (belongsToSmall(blockSize)) {
+					if (belongsToSmall(newBlockSize))
+						return SmallAllocator::expand(block, amount);
+					else
+						return false;
+				}
+
+				else {
+					if (belongsToLarge(newBlockSize))
+						return LargeAllocator::expand(block, amount);
+					else
+						return false;
+				}
+			}
+
+			bool owns(RawBlock block) const {
 				return (SmallAllocator::owns(block) ||
 					      LargeAllocator::owns(block));
+			}
+
+			bool isEmpty() const {
+				return (SmallAllocator::isEmpty() &&
+				        LargeAllocator::isEmpty());
+			}
+
+			bool isFull() const {
+				return (SmallAllocator::isFull() &&
+				        LargeAllocator::isFull());
+			}
+
+			SizeType calcUnoccupied() const {
+				return (SmallAllocator::calcUnoccupied() +
+				        LargeAllocator::calcUnoccupied());
+			}
+
+			SizeType calcOccupied() const {
+				return (SmallAllocator::calcOccupied() +
+				        LargeAllocator::calcOccupied());
+			}
+
+			bool belongsToSmall(SizeType size) const {
+				return (size <= Policy::getThreshold());
+			}
+
+			bool belongsToLarge(SizeType size) const {
+				return !(belongsToSmall(size));
+			}
+
+			SmallAllocator & getSmall() {
+				return static_cast<SmallAllocator&>(*this);
+			}
+
+			SmallAllocator const & getSmall() const {
+				return static_cast<SmallAllocator const &>(*this);
+			}
+
+
+			LargeAllocator & getLarge() {
+				return static_cast<LargeAllocator&>(*this);
+			}
+
+			LargeAllocator const & getLarge() const {
+				return static_cast<LargeAllocator const &>(*this);
+			}
+
+
+		private:
+			template <class OldOwner, class NewOwner>
+			void reallocateAcrossAllocators(RawBlock & block, SizeType size, SizeType copySize) {
+				auto newBlock = NewOwner::allocate(size);
+				std::memcpy(newBlock.getPtr(), block.getPtr(), copySize);
+				OldOwner::deallocate(block);
+				block = newBlock;
 			}
 	};
 

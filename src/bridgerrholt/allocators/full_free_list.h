@@ -11,257 +11,258 @@
 namespace bridgerrholt {
 	namespace allocators {
 
-template <class> class BasicFullFreeList;
+		class FullFreeList {
+private:
+	static constexpr std::size_t minElementSize {
+		sizeof(std::uintptr_t)
+	};
 
-class FullFreeList
-{
-	private:
-		static constexpr std::size_t minElementSize {
-			sizeof(std::uintptr_t)
-		};
+public:
+		template <class Element>
+	class Iterator
+	{
+		public:
+			constexpr Iterator() {}
+			constexpr Iterator(Element * ptr) : ptr_ {ptr} {}
 
-	public:
-		// Represents a block in the allocator's memory.
-		template <
-			SizeType minimumBlockSize,
-			std::size_t alignment>
-		union alignas(alignment) ArrayElement
-		{
-			public:
-				static constexpr SizeType getRequiredSize() {
-					constexpr SizeType minimum {
-						std::max(minimumBlockSize, minElementSize)
-					};
+			void advance() {
+				ptr_ = ptr_->getNextNodePtr();
+			}
 
-					static_assert(minimum > 0, "Array size of ArrayElement can't be 0");
+			Element & get() { return *ptr_; }
 
-					SizeType remainder {minimum % alignment};
-					SizeType toReturn  {minimum};
+		private:
+			Element * ptr_;
+	};
 
-					if (remainder != 0)
-						toReturn += (alignment - minimum % alignment);
+	template <class t_Policy>
+	class alignas(t_Policy::alignment)
+	Allocator : t_Policy
+	{
+		public:
+			using Policy = t_Policy;
 
-					return toReturn;
+		private:
+			using ElementType = typename Policy::ElementType;
+
+		public:
+			friend void swap(Allocator & first, Allocator & second) {
+				using std::swap;
+
+				swap(static_cast<Policy&>(first), static_cast<Policy&>(second));
+				swap(first.root_,                 second.root_);
+			}
+
+			constexpr Allocator() : Allocator(Policy()) {}
+
+			Allocator(Policy policy) : Policy(std::move(policy)) {
+
+				ElementType       *       currentPtr {this->getArray().data()};
+				ElementType       *       nextPtr    {currentPtr + 1};
+				ElementType const * const end        {this->getArray().data() + this->getBlockCount()};
+
+				while (nextPtr < end) {
+					currentPtr->setNextNode(nextPtr);
+
+					currentPtr = nextPtr;
+					++nextPtr;
+				}
+
+				currentPtr->setNextNode(nullptr);
+
+				root_ = {this->getArray().data()};
+			}
+
+			Allocator(Allocator && other) : Allocator() {
+				swap(*this, other);
+			}
+
+			constexpr SizeType calcRequiredSize(SizeType desiredSize) {
+				return Policy::getBlockSize();
+			}
+
+			constexpr SizeType getStorageSize() const {
+				return Policy::getArray().size();
+			}
+
+			/// Casting and dereferencing the returned pointer is
+			/// implicitly undefined behaviour, but nothing unexpected should happen
+			/// as long as you follow casting guidelines of
+			/// the standard and your compiler.
+			///
+			/// @return Guaranteed to be aligned with the alignment of
+			///         the @ref FullFreeList instantiation.
+			void * allocate() {
+				auto nextSpot = static_cast<void*>(&root_.get());
+
+				// If root_ points to an unallocated spot,
+				// it now must point to a new spot.
+				if (nextSpot != nullptr) {
+					//root_ = root_->node.getNextPtr();
+					root_.advance();
+				}
+
+				return nextSpot;
+			}
+
+			constexpr void deallocate(NullBlock) const {}
+
+			/// @param ptr Must be a pointer returned by
+			///            this same instance's @ref allocate() method.
+			void deallocate(void * ptr) {
+				if (ptr == nullptr) return;
+
+				auto blockPtr = static_cast<ElementType*>(ptr);
+
+				// Overwrite the allocated block with a pointer to
+				// the current next block to allocate.
+				blockPtr->setNextNode(&root_.get());
+
+				// The block being deallocated is now the next to be allocated.
+				root_ = {blockPtr};
+			}
+
+			bool owns(void * ptr) {
+				return (ptr >= this->getArray().data() &&
+					ptr < this->getArray().data() + this->getBlockCount());
+			}
+
+		private:
+			using IteratorType = FullFreeList::Iterator<ElementType>;
+
+			IteratorType root_;
+	};
+
+	// Represents a block in the allocator's memory.
+	template <
+		SizeType minimumBlockSize,
+		std::size_t alignment>
+	union alignas(alignment) ArrayElement
+	{
+		public:
+			static constexpr SizeType getRequiredSize() {
+				constexpr SizeType minimum {
+					std::max(minimumBlockSize, minElementSize)
 				};
 
-				void setNextNode(ArrayElement * nextNode) {
-					nextNode_ = {nextNode};
-				}
+				static_assert(minimum > 0, "Array size of ArrayElement can't be 0");
 
-				ArrayElement * getNextNodePtr() {
-					return nextNode_;
-				}
+				SizeType remainder {minimum % alignment};
+				SizeType toReturn  {minimum};
 
-				char * getCharPtr() {
-					data_ = {};
-					return data_;
-				}
+				if (remainder != 0)
+					toReturn += (alignment - minimum % alignment);
 
+				return toReturn;
+			};
 
-			private:
-				ArrayElement * nextNode_;
-				char           data_ [getRequiredSize()];
-		};
+			void setNextNode(ArrayElement * nextNode) {
+				nextNode_ = {nextNode};
+			}
 
+			ArrayElement * getNextNodePtr() {
+				return nextNode_;
+			}
 
-		template <class Element>
-		class Iterator
-		{
-			public:
-				constexpr Iterator() {}
-				constexpr Iterator(Element * ptr) : ptr_ {ptr} {}
-
-				void advance() {
-					ptr_ = ptr_->getNextNodePtr();
-				}
-
-				Element & get() { return *ptr_; }
-
-			private:
-				Element * ptr_;
-		};
+			char * getCharPtr() {
+				data_ = {};
+				return data_;
+			}
 
 
-		template <
-			SizeType    minimumBlockSize,
-			std::size_t minimumAlignment>
-		static constexpr std::size_t getAlignment() {
-			using Element =
-				ArrayElement<
-					minimumBlockSize,
-					std::max(minimumAlignment,
-					         minElementSize)>;
+		private:
+			ArrayElement * nextNode_;
+			char           data_ [getRequiredSize()];
+	};
 
-			return std::max(minimumAlignment, alignof(Element));
-		}
 
-		template <template <class T> class CoreArray,
-			SizeType    minimumBlockSize,
-			std::size_t t_alignment>
-		class RuntimePolicy {
-			public:
-				static constexpr std::size_t alignment {t_alignment};
 
-				using ElementType = ArrayElement<minimumBlockSize, alignment>;
-				using ArrayType   = CoreArray<ElementType>;
+	template <
+		SizeType    minimumBlockSize,
+		std::size_t minimumAlignment>
+	static constexpr std::size_t getAlignment() {
+		using Element =
+			ArrayElement<
+				minimumBlockSize,
+				std::max(minimumAlignment,
+				         minElementSize)>;
 
-				static_assert(sizeof(ElementType) == ElementType::getRequiredSize(),
-				              "ArrayElement's size is wrong");
+		return std::max(minimumAlignment, alignof(Element));
+	}
 
-				using ArrayReturn      = ArrayType       &;
-				using ArrayConstReturn = ArrayType const &;
+	template <template <class T> class CoreArray,
+		SizeType    minimumBlockSize,
+		std::size_t t_alignment>
+	class RuntimePolicy {
+		public:
+			static constexpr std::size_t alignment {t_alignment};
 
-				RuntimePolicy(SizeType blockCount) : array_ (blockCount) {}
+			using ElementType = ArrayElement<minimumBlockSize, alignment>;
+			using ArrayType   = CoreArray<ElementType>;
 
-				SizeType calcNeededSize(SizeType desiredSize) const {
-					return getBlockSize();
-				}
+			static_assert(sizeof(ElementType) == ElementType::getRequiredSize(),
+			              "ArrayElement's size is wrong");
 
-				ArrayReturn      getArray()       { return array_; }
-				ArrayConstReturn getArray() const { return array_; }
+			using ArrayReturn      = ArrayType       &;
+			using ArrayConstReturn = ArrayType const &;
 
-				SizeType getBlockCount() { return array_.size(); }
-				static constexpr SizeType getBlockSize()  { return sizeof(ElementType); }
+			RuntimePolicy(SizeType blockCount) : array_ (blockCount) {}
 
-			private:
-				ArrayType array_;
-		};
+			SizeType calcRequiredSize(SizeType desiredSize) const {
+				return getBlockSize();
+			}
 
-		template <template <class T, SizeType size> class CoreArray,
-			SizeType    minimumBlockSize,
-			SizeType    blockCount,
-			std::size_t t_alignment>
-		class TemplatedPolicy {
-			public:
-				static constexpr std::size_t alignment {t_alignment};
+			ArrayReturn      getArray()       { return array_; }
+			ArrayConstReturn getArray() const { return array_; }
 
-				using ElementType = ArrayElement<minimumBlockSize, alignment>;
-				using ArrayType   = CoreArray<ElementType, blockCount>;
+			SizeType getBlockCount() { return array_.size(); }
+			static constexpr SizeType getBlockSize()  { return sizeof(ElementType); }
 
-				static_assert(sizeof(ElementType) == ElementType::getRequiredSize(),
-				              "ArrayElement's size is wrong");
+		private:
+			ArrayType array_;
+	};
 
-				using ArrayReturn      = ArrayType       &;
-				using ArrayConstReturn = ArrayType const &;
+	template <template <class T, SizeType size> class CoreArray,
+		SizeType    minimumBlockSize,
+		SizeType    blockCount,
+		std::size_t t_alignment>
+	class TemplatedPolicy {
+		public:
+			static constexpr std::size_t alignment {t_alignment};
 
-				static constexpr SizeType calcNeededSize(SizeType desiredSize) {
-					return getBlockSize();
-				}
+			using ElementType = ArrayElement<minimumBlockSize, alignment>;
+			using ArrayType   = CoreArray<ElementType, blockCount>;
 
-				ArrayReturn      getArray()       { return array_; }
-				ArrayConstReturn getArray() const { return array_; }
+			static_assert(sizeof(ElementType) == ElementType::getRequiredSize(),
+			              "ArrayElement's size is wrong");
 
-				static constexpr SizeType getBlockCount() { return blockCount; }
-				static constexpr SizeType getBlockSize()  { return sizeof(ElementType); }
+			using ArrayReturn      = ArrayType       &;
+			using ArrayConstReturn = ArrayType const &;
 
-			private:
-				ArrayType array_;
-		};
+			static constexpr SizeType calcRequiredSize(SizeType desiredSize) {
+				return getBlockSize();
+			}
 
-		template <template <class, SizeType> class Array,
-			SizeType    minimumBlockSize,
-			SizeType    blockCount,
-			std::size_t minimumAlignment = alignof(std::max_align_t)>
-		using Templated = BasicFullFreeList<TemplatedPolicy<
+			ArrayReturn      getArray()       { return array_; }
+			ArrayConstReturn getArray() const { return array_; }
+
+			static constexpr SizeType getBlockCount() { return blockCount; }
+			static constexpr SizeType getBlockSize()  { return sizeof(ElementType); }
+
+		private:
+			ArrayType array_;
+	};
+
+	template <template <class, SizeType> class Array,
+		SizeType    minimumBlockSize,
+		SizeType    blockCount,
+		std::size_t minimumAlignment = alignof(std::max_align_t)>
+	using Templated = Allocator<TemplatedPolicy<
 			Array, minimumBlockSize, blockCount,
 			getAlignment<minimumBlockSize, minimumAlignment>()
 		>>;
-};
 
-
-/// This class itself does not have any undefined behaviour, working with
-/// its returned values is however almost always undefined.
-template <class t_Policy>
-class alignas(t_Policy::alignment)
-BasicFullFreeList : t_Policy
-{
-	public:
-		using Policy = t_Policy;
-
-	private:
-		using ElementType = typename Policy::ElementType;
-
-	public:
-		friend void swap(BasicFullFreeList & first, BasicFullFreeList & second) {
-			using std::swap;
-
-			swap(static_cast<Policy&>(first), static_cast<Policy&>(second));
-			swap(first.root_,                 second.root_);
-		}
-
-		constexpr BasicFullFreeList() : BasicFullFreeList(Policy()) {}
-
-		BasicFullFreeList(Policy policy) : Policy(std::move(policy)) {
-
-			ElementType       *       currentPtr {this->getArray().data()};
-			ElementType       *       nextPtr    {currentPtr + 1};
-			ElementType const * const end        {this->getArray().data() + this->getBlockCount()};
-
-			while (nextPtr < end) {
-				currentPtr->setNextNode(nextPtr);
-
-				currentPtr = nextPtr;
-				++nextPtr;
-			}
-
-			currentPtr->setNextNode(nullptr);
-
-			root_ = {this->getArray().data()};
-		}
-
-		BasicFullFreeList(BasicFullFreeList && other) : BasicFullFreeList() {
-			swap(*this, other);
-		}
-
-		/// Casting and dereferencing the returned pointer is
-		/// implicitly undefined behaviour, but nothing unexpected should happen
-		/// as long as you follow casting guidelines of
-		/// the standard and your compiler.
-		///
-		/// @return Guaranteed to be aligned with the alignment of
-		///         the @ref FullFreeList instantiation.
-		void * allocate() {
-			auto nextSpot = static_cast<void*>(&root_.get());
-
-			// If root_ points to an unallocated spot,
-			// it now must point to a new spot.
-			if (nextSpot != nullptr) {
-				//root_ = root_->node.getNextPtr();
-				root_.advance();
-			}
-
-			return nextSpot;
-		}
-
-		constexpr void deallocate(NullBlock) {}
-
-		/// @param ptr Must be a pointer returned by
-		///            this same instance's @ref allocate() method.
-		void deallocate(void * ptr) {
-			if (ptr == nullptr) return;
-
-			auto blockPtr = static_cast<ElementType*>(ptr);
-
-			// Overwrite the allocated block with a pointer to
-			// the current next block to allocate.
-			blockPtr->setNextNode(&root_.get());
-
-			// The block being deallocated is now the next to be allocated.
-			root_ = {blockPtr};
-		}
-
-		bool owns(void * ptr) {
-			return (ptr >= this->getArray().data() &&
-				ptr < this->getArray().data() + this->getBlockCount());
-		}
-
-	private:
-		using IteratorType = FullFreeList::Iterator<ElementType>;
-
-		IteratorType root_;
-};
-
-
+		};
 
 	}
 }
