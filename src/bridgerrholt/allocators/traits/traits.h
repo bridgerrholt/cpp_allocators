@@ -12,11 +12,11 @@ class RuntimeSizedArray : public ArrayType<T>
 		RuntimeSizedArray(std::size_t size) : ArrayType<T> (size) {}
 };
 
-template <class t_ArrayType>
-class ArrayPolicyBase
+template <template <class T> class t_ArrayType>
+class ArrayPolicyInterface
 {
 	public:
-		friend void swap(ArrayPolicyBase & first, ArrayPolicyBase & second) {
+		friend void swap(ArrayPolicyInterface & first, ArrayPolicyInterface & second) {
 			using std::swap;
 
 			swap(first.array_, second.array_);
@@ -27,7 +27,7 @@ class ArrayPolicyBase
 		using ArrayConstReturn = ArrayType const &;
 
 		template <class ... ArgTypes>
-		constexpr ArrayPolicyBase(ArgTypes ... args) :
+		constexpr ArrayPolicyInterface(ArgTypes ... args) :
 			array_ (std::forward<ArgTypes>(args)...) {}
 
 		constexpr ArrayReturn      getArray()       { return array_; }

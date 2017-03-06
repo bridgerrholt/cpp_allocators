@@ -4,6 +4,8 @@
 #define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_ALLOCATION
 #define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_DEALLOCATION
 
+#define BRH_CPP_ALLOCATORS_MULTITHREADED
+
 #include <iostream>
 #include <array>
 #include <vector>
@@ -19,6 +21,10 @@
 #include "common/common_types.h"
 #include "wrappers/allocator_wrapper.h"
 #include "common/round_up_to_multiple.h"
+
+#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+	#include <thread>
+#endif
 
 namespace bridgerrholt {
 	namespace allocators {
@@ -119,6 +125,8 @@ class BitmappedBlock
 
 				template <class T>
 				void printBits() const {
+					auto lock = makeAllocationLock();
+
 					printMeta();
 
 					for (std::size_t i {0}; i < Policy::getBlockCount(); ++i) {
@@ -160,19 +168,23 @@ class BitmappedBlock
 						Policy::getBlockCount() / arrayElementSizeBits
 					};
 
-					/// Bad code
-					auto ptr = attemptAllocation(blocksRequired, lastInsertionMetaByte_, metaEnd);
-					if (ptr != nullptr)
-						goto success;
+					// Try allocating on the last half then the first half.
+					auto ptr = attemptAllocation(
+						blocksRequired, lastInsertionMetaByte_, metaEnd
+					);
 
-					ptr = attemptAllocation(blocksRequired, 0, lastInsertionMetaByte_);
-					if (ptr != nullptr)
-						goto success;
+					if (ptr == nullptr) {
+						ptr = attemptAllocation(
+							blocksRequired, 0, lastInsertionMetaByte_
+						);
+					}
 
-					return RawBlock::makeNullBlock();
-
-				success:
-					return {ptr, size};
+					if (ptr == nullptr) {
+						return RawBlock::makeNullBlock();
+					}
+					else {
+						return {ptr, size};
+					}
 				}
 
 				constexpr RawBlock allocateAll() {
@@ -359,7 +371,15 @@ class BitmappedBlock
 				}
 
 
+
+
 			private:
+
+#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+				using MutexType = std::mutex;
+				using LockType  = std::lock_guard<MutexType>;
+#endif
+
 				using Pointer      = ArrayElement       *;
 				using ConstPointer = ArrayElement const *;
 
@@ -399,7 +419,10 @@ class BitmappedBlock
 					std::size_t firstIndex {lastIndex - blocksRequired + 1};
 					std::size_t index      {firstIndex};
 
-					// TODO: Optimize into 3 stages.
+#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+					std::lock_guard<std::mutex> lock {allocationMutex_};
+#endif
+
 					while (index <= lastIndex) {
 						setMetaBit(index);
 
@@ -494,6 +517,15 @@ class BitmappedBlock
 					Policy::getElements()[metaIndex].unsetBit(metaBitIndex);
 				}
 
+#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+				LockType makeAllocationLock() const {
+					return {allocationMutex_};
+				}
+#else
+				char makeAllocationLock() const {
+					return 0;
+				}
+#endif
 
 				// Calculates how efficiently memory space is used.
 				double efficiency() {
@@ -502,6 +534,10 @@ class BitmappedBlock
 				}
 
 				SizeType lastInsertionMetaByte_;
+
+#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+				MutexType allocationMutex_;
+#endif
 		};
 
 		/// Contains values regarding information about size.
