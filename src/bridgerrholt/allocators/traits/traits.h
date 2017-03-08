@@ -14,7 +14,7 @@ class RuntimeSizedArray : public ArrayType<T>
 		RuntimeSizedArray(std::size_t size) : ArrayType<T> (size) {}
 };
 
-template <template <class T> class t_ArrayType>
+template <template <class T> class t_ArrayType, class T>
 class ArrayPolicyInterface
 {
 	public:
@@ -24,7 +24,7 @@ class ArrayPolicyInterface
 			swap(first.array_, second.array_);
 		}
 
-		using ArrayType        = t_ArrayType;
+		using ArrayType        = t_ArrayType<T>;
 		using ArrayReturn      = ArrayType       &;
 		using ArrayConstReturn = ArrayType const &;
 

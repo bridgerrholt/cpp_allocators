@@ -5,8 +5,9 @@
 #include <type_traits>
 
 #include "common/free_list_node.h"
-
 #include "common/common_types.h"
+
+#include "multithread/thread.h"
 
 namespace bridgerrholt {
 	namespace allocators {
@@ -93,6 +94,8 @@ public:
 			/// @return Guaranteed to be aligned with the alignment of
 			///         the @ref FullFreeList instantiation.
 			void * allocate() {
+				std::lock_guard<std::mutex> lock {mutex_};
+
 				auto nextSpot = static_cast<void*>(&root_.get());
 
 				// If root_ points to an unallocated spot,
@@ -114,6 +117,8 @@ public:
 
 				auto blockPtr = static_cast<ElementType*>(ptr);
 
+				std::lock_guard<std::mutex> lock {mutex_};
+
 				// Overwrite the allocated block with a pointer to
 				// the current next block to allocate.
 				blockPtr->setNextNode(&root_.get());
@@ -131,6 +136,10 @@ public:
 			using IteratorType = FullFreeList::Iterator<ElementType>;
 
 			IteratorType root_;
+
+#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+			std::mutex mutex_;
+#endif
 	};
 
 	// Represents a block in the allocator's memory.

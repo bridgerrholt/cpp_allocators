@@ -4,6 +4,7 @@
 #define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_ALLOCATION
 #define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_DEALLOCATION
 
+//#define BRH_CPP_ALLOCATORS_MULTITHREADED
 //#define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_3_STAGE_ALLOCATION
 
 #include <iostream>
@@ -21,6 +22,8 @@
 #include "common/common_types.h"
 #include "wrappers/allocator_wrapper.h"
 #include "common/round_up_to_multiple.h"
+
+#include "multithread/thread.h"
 
 namespace bridgerrholt {
 	namespace allocators {
@@ -174,17 +177,23 @@ public:
 					getAttributes().getBlockCount() / arrayElementSizeBits
 				};
 
-				// Try to allocate from the hint to the end then from 0 to the hint.
-				auto ptr =
-					attemptAllocation(blocksRequired, allocateByteHint_, metaEnd);
+				// Try allocating on the last half then the first half.
+				auto ptr = attemptAllocation(
+					blocksRequired, allocateByteHint_, metaEnd
+				);
 
-				if (ptr == nullptr)
-					ptr = attemptAllocation(blocksRequired, 0, allocateByteHint_);
+				if (ptr == nullptr) {
+					ptr = attemptAllocation(
+						blocksRequired, 0, allocateByteHint_
+					);
+				}
 
-				if (ptr != nullptr)
+				if (ptr == nullptr) {
+					return Handle::makeNullBlock();
+				}
+				else {
 					return {ptr, size};
-
-				return Handle::makeNullBlock();
+				}
 			}
 
 			constexpr Handle allocateAll() {
@@ -385,6 +394,11 @@ public:
 
 
 		private:
+#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+			using MutexType = std::mutex;
+			using LockType  = std::lock_guard<MutexType>;
+#endif
+			
 			using Pointer      = ArrayElement       *;
 			using ConstPointer = ArrayElement const *;
 
@@ -470,6 +484,10 @@ public:
 
 
 #else
+	#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+				std::lock_guard<std::mutex> lock {allocationMutex_};
+	#endif
+				
 				while (index <= lastIndex) {
 					setMetaBit(index);
 
@@ -571,6 +589,16 @@ public:
 				Policy::getElements()[metaIndex].unsetBit(metaBitIndex);
 			}
 
+#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+			LockType makeAllocationLock() const {
+				return {allocationMutex_};
+			}
+#else
+			char makeAllocationLock() const {
+					return 0;
+				}
+#endif
+
 
 			// Calculates how efficiently memory space is used.
 			double efficiency() {
@@ -579,6 +607,10 @@ public:
 			}
 
 			SizeType allocateByteHint_;
+
+#ifdef BRH_CPP_ALLOCATORS_MULTITHREADED
+			MutexType allocationMutex_;
+#endif
 	};
 
 
@@ -668,15 +700,17 @@ public:
 
 private:
 	// Runtime policy
-	template <template <class> class A, std::size_t alignment>
-	using RuntimeArrayType =
-		traits::RuntimeSizedArray<
-			A, AlignedType<alignment>
+	template <template <class> class A>
+	struct RuntimeArrayType {
+		template <class T>
+		using Array = traits::RuntimeSizedArray<
+			A, T
 		>;
+	};
 
 	template <template <class> class A, std::size_t alignment>
 	using RuntimeArrayPolicyBase =
-		traits::ArrayPolicyBase<RuntimeArrayType<A, alignment> >;
+		traits::ArrayPolicyInterface<RuntimeArrayType<A>::template Array, AlignedType<alignment> >;
 
 
 public:
@@ -746,15 +780,17 @@ private:
 		SizeType    s,
 		SizeType    c,
 		std::size_t a>
-	using TemplatedArrayType =
-		ArrayTemplateWrapper<A, AlignedType<a>, s, c, a>;
+	struct TemplatedArrayType {
+		template <class T>
+		using Array = ArrayTemplateWrapper<A, T, s, c, a>;
+	};
 
 	template <template <class, SizeType> class A,
 		SizeType    s,
 		SizeType    c,
 		std::size_t a>
 	using TemplatedArrayPolicyBase =
-		traits::ArrayPolicyBase<TemplatedArrayType<A, s, c, a> >;
+		traits::ArrayPolicyInterface<TemplatedArrayType<A, s, c, a>::template Array, AlignedType<a> >;
 
 public:
 	template <template <class T, SizeType size> class CoreArray,
