@@ -14,6 +14,16 @@ class RuntimeSizedArray : public ArrayType<T>
 		RuntimeSizedArray(std::size_t size) : ArrayType<T> (size) {}
 };
 
+
+template <template <class T, SizeType> class CoreArray, SizeType size>
+class TemplateSizedArrayWrapper
+{
+	public:
+		template <class T>
+		using Array = CoreArray<T, size>;
+};
+
+
 template <template <class T> class t_ArrayType, class T>
 class ArrayPolicyInterface
 {
