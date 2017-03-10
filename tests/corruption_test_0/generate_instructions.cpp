@@ -152,7 +152,7 @@ InstructionList generateInstructions(
 	Generator::Flags  flags)
 {
 	Generator generator {allocator, totalSize, minimumSize, maximumSize, flags};
-	auto instructions = generator.generateWhole(0);
+	auto instructions = generator.generateWhole(0, 1);
 
 	return instructions;
 }

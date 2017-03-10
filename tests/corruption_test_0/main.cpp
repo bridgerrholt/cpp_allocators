@@ -2,6 +2,7 @@
 
 #include "instruction_output.h"
 #include "generate_instructions.h"
+#include "stack_generator.h"
 
 int main(int argc, char* argv[])
 {
@@ -16,11 +17,7 @@ int main(int argc, char* argv[])
 	AllocatorPolicy allocatorPolicy;
 	BlockList       blockList;
 
-	Generator::FlagsWrapper flagsWrapper {Generator::FlagsEnum::ALL};
-	std::cout << flagsWrapper.getNumeric() << '\n';
-
-	auto list = generateInstructions(allocatorPolicy, 16, 1, 16,
-	                                 {Generator::FlagsEnum::ALL});
+	auto list = StackGenerator::generateFillSequence(allocatorPolicy, 16);
 
 	std::cout << list;
 

@@ -3,6 +3,8 @@
 
 #include <utility>
 
+#include "../common/common_types.h"
+
 namespace bridgerrholt {
 	namespace allocators {
 		namespace traits {

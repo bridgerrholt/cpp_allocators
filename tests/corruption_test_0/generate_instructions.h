@@ -75,7 +75,8 @@ InstructionList generateInstructions(
 	std::size_t       maximumSize,
 	Generator::Flags flags = {
 		Generator::FlagsWrapper(Generator::FlagsEnum::ALLOW_REALLOCATE) |
-		Generator::FlagsWrapper(Generator::FlagsEnum::ALLOW_EXPAND)}
+		Generator::FlagsWrapper(Generator::FlagsEnum::ALLOW_EXPAND)
+	}
 );
 
 

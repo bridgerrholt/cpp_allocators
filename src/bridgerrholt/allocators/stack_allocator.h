@@ -260,7 +260,7 @@ class StackAllocator {
 
 		template <template <class T, SizeType size> class CoreArray,
 			SizeType stackSize>
-		using Templated = Templated<CoreArray, stackSize>;
+		using Templated = stack_allocator::Templated<CoreArray, stackSize>;
 };
 
 

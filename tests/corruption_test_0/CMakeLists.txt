@@ -1,6 +1,6 @@
 project(corruption_test_0)
 
-set(source_files main.cpp generate_instructions.cpp instructions.cpp)
+set(source_files main.cpp generate_instructions.cpp instructions.cpp stack_generator.cpp)
 add_executable(corruption_test_0 ${source_files})
 
 target_compile_options(corruption_test_0 PUBLIC -O0)
