@@ -131,7 +131,7 @@ Allocator : t_Policy
 		}
 
 	private:
-		using IteratorType = FullFreeList::Iterator<ElementType>;
+		using IteratorType = Iterator<ElementType>;
 
 		IteratorType root_;
 

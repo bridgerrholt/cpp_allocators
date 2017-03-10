@@ -88,7 +88,6 @@ class RuntimePolicy : private t_Allocator
 	private:
 		Comparator comparator_;
 		SizeType   threshold_;
-
 };
 
 
