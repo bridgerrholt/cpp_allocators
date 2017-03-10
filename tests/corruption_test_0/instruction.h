@@ -16,7 +16,7 @@ namespace bridgerrholt {
 class Instruction
 {
 	private:
-		using BasePtr      = instructions::InstructionBase*;
+		using BasePtr      = instructions::InstructionBase       *;
 		using ConstBasePtr = instructions::InstructionBase const *;
 
 	public:

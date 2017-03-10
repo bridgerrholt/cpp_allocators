@@ -7,8 +7,6 @@ namespace {
 using namespace bridgerrholt::allocators;
 using namespace bridgerrholt::allocators::tests;
 
-
-
 	namespace stack_instructions {
 
 class InstructionBase
@@ -16,7 +14,9 @@ class InstructionBase
 	public:
 		InstructionBase(std::size_t value) : value_ {value} {}
 
-	protected:
+		std::size_t getValue() const { return value_; }
+
+	private:
 		std::size_t value_;
 };
 
@@ -26,58 +26,146 @@ using InstructionListContainer = std::vector<T>;
 
 using InstructionListSizeType = InstructionListContainer<int>;
 
-constexpr std::size_t InstructionSize =
+constexpr std::size_t instructionSize =
 	sizeof(InstructionBase) + sizeof(InstructionListSizeType);
 
 class Instruction
 {
-	public:
+	private:
+		using BasePtr = InstructionBase *;
 
+	public:
+		template <class T>
+		Instruction(T coreInstruction) {
+			new (rawArray_.data()) T {std::move(coreInstruction)};
+		}
+
+		BasePtr get() { return reinterpret_cast<BasePtr>(rawArray_.data()); }
+
+	private:
+		std::array<char, instructionSize> rawArray_;
+};
+
+using InstructionList = std::vector<Instruction>;
+
+
+class Allocate : public InstructionBase
+{
+	public:
+		Allocate(std::size_t size) : InstructionBase (size) {}
+
+		Allocate(std::size_t size, InstructionList list) :
+			Allocate (size),
+      list_    (list) {}
+
+		std::size_t getSize() const { return getValue(); }
+
+		InstructionList const & getList() const { return list_; }
+
+	private:
+		InstructionList list_;
 };
 
 
-class Allocate
+class Expand : public InstructionBase
 {
 	public:
-		Allocate(std::size_t size, NodeList list);
+		Expand(std::size_t amount) : InstructionBase(amount) {}
 
-	private:
-		NodeList list;
+		std::size_t getAmount() const { return getValue(); }
+};
+
+
+class Reallocate : public InstructionBase
+{
+	public:
+		Reallocate(std::size_t size) : Reallocate(size) {}
+
+		std::size_t getSize() const { return getValue(); }
 };
 
 
 	}
-
-class NodeBase
-{
-	public:
-
-};
-
 
 
 class GeneratorInstance
 {
 	public:
 		GeneratorInstance(
-			InstructionList         & instructions,
-			GenerationArgPack const & generationArgs,
-			AllowedOperations         allowedOperations) :
-				instructions_      (instructions),
+			InstructionList                  & instructions,
+			StackGenerator::RandomEngineType & randomEngine,
+			GenerationArgPack          const & generationArgs,
+			AllowedOperations                  allowedOperations) :
+				instructions_      {instructions},
+				randomEngine_      {randomEngine},
 				generationArgs_    (generationArgs),
 				allowedOperations_ (allowedOperations) {
 
+			generate();
+		}
+
+
+	private:
+		enum class Action {
+			END_BLOCK = 1,
+			ALLOCATE,
+			REALLOCATE,
+			EXPAND,
+
+			_START = 1,
+			_END   = 4
+		};
+
+		void generate() {
 			std::size_t size  {0};
 			std::size_t count {0};
 
+			stack_instructions::InstructionList list;
 
+			stack_instructions::InstructionList * currentList {&list};
 
+			while (true) {
+				auto nextSize = generateSize(generationArgs_.totalSize - count);
+
+				size += nextSize;
+				++count;
+
+				currentList->emplace_back(stack_instructions::Allocate(nextSize));
+
+				auto action = randomAction();
+
+				switch (action) {
+					case END_BLOCK:
+				}
+			}
 		}
 
-	private:
-		InstructionList         & instructions_;
-		GenerationArgPack const & generationArgs_;
-		AllowedOperations         allowedOperations_;
+		std::size_t generateSize(std::size_t remainingSpace) const {
+			auto max = std::min(generationArgs_.maxAllocationSize,
+			                    remainingSpace);
+
+			std::uniform_int_distribution<std::size_t> distribution {
+				generationArgs_.minAllocationSize, max
+			};
+
+			return distribution(randomEngine_);
+		}
+
+		Action randomAction() const {
+			std::uniform_int_distribution<std::size_t> distribution {
+				static_cast<std::size_t>(Action::_START),
+				static_cast<std::size_t>(Action::_END)
+			};
+
+			return static_cast<Action>(distribution(randomEngine_));
+		}
+
+
+
+		InstructionList                  & instructions_;
+		StackGenerator::RandomEngineType & randomEngine_;
+		GenerationArgPack          const & generationArgs_;
+		AllowedOperations                  allowedOperations_;
 };
 
 }

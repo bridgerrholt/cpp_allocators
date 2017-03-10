@@ -1,6 +1,8 @@
 #ifndef BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_STACK_GENERATOR_H
 #define BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_STACK_GENERATOR_H
 
+#include <random>
+
 #include "instruction_list.h"
 #include "generator_flags.h"
 #include "generation_arg_pack.h"
@@ -12,6 +14,8 @@ namespace bridgerrholt {
 class StackGenerator
 {
 	public:
+		using RandomEngineType = std::mt19937;
+
 		static InstructionList generate(
 			GenerationArgPack generationArgs,
 			AllowedOperations allowedOperations);
@@ -39,6 +43,8 @@ class StackGenerator
 			GenerationArgPack const & generationArgs,
 			AllowedOperations         allowedOperations
 		);
+
+		RandomEngineType randomEngine_;
 };
 
 		}
