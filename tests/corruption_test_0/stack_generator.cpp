@@ -2,6 +2,8 @@
 
 #include <cassert>
 #include <vector>
+#include <memory>
+#include <tuple>
 
 namespace {
 
@@ -47,7 +49,7 @@ class Instruction
 		std::array<char, instructionSize> rawArray_;
 };
 
-using InstructionList = std::vector<Instruction>;
+using InstructionList = std::vector<std::unique_ptr<InstructionBase> >;
 
 
 
@@ -59,7 +61,7 @@ class Allocate : public InstructionBase
 
 		Allocate(std::size_t size, InstructionList list) :
 			InstructionBase (size),
-      list_           (list) {}
+      list_           (std::move(list)) {}
 
 		std::size_t getSize()   const { return getValue(); }
 
@@ -144,7 +146,11 @@ class GeneratorInstance
 
 			while (count_ < generationArgs_.minInstructionCount) {
 				if (currentBlock_ == nullptr) {
-					currentBlock_ = makeBlock(list, nullptr);
+					auto result = makeBlock(list, nullptr);
+					if (std::get<0>(result))
+						currentBlock_ = std::get<1>(result);
+					else
+						break;
 				}
 
 				else {
@@ -167,12 +173,17 @@ class GeneratorInstance
 
 						case Action::REALLOCATE:
 							makeReallocate();
+							break;
+
+						case Action::EXPAND:
+							makeExpand();
+							break;
 					}
 				}
 			}
 		}
 
-		std::size_t generateSize() const {
+		bool generateSize(std::size_t & outSize) const {
 			auto max = std::min(generationArgs_.maxAllocationSize,
 			                    generationArgs_.totalSize - size_);
 
@@ -180,7 +191,17 @@ class GeneratorInstance
 				generationArgs_.minAllocationSize, max
 			};
 
-			return distribution(randomEngine_);
+			auto value =
+				generationArgs_.allocator.calcRequiredSize(
+					distribution(randomEngine_)
+				);
+
+			if (value <= generationArgs_.maxAllocationSize) {
+				outSize = value;
+				return true;
+			}
+
+			else return false;
 		}
 
 		Action randomAction() const {
@@ -193,38 +214,46 @@ class GeneratorInstance
 		}
 
 		stack_instructions::Block * makeBlock() {
-			return makeBlock(currentBlock_->getList(), currentBlock_);
+			auto result = makeBlock(currentBlock_->getList(), currentBlock_);
+			return std::get<1>(result);
 		}
 
-
-		stack_instructions::Block *
+		// False if generateSize() failed
+		std::pair<bool, stack_instructions::Block *>
 		makeBlock(stack_instructions::InstructionList & list,
 		          stack_instructions::Block           * parentBlock) {
-			auto nextSize = generateSize();
+			std::size_t nextSize;
+			if (generateSize(nextSize)) {
+				size_  += nextSize;
+				count_ += 2;
 
-			size_  += nextSize;
-			count_ += 2;
+				list.emplace_back(
+					new stack_instructions::Block(parentBlock, nextSize)
+				);
 
-			list.emplace_back(
-				stack_instructions::Block(parentBlock, nextSize)
-			);
+				return {true, &static_cast<stack_instructions::Block&>(*list.back())};
+			}
 
-			return &static_cast<stack_instructions::Block&>(list.back());
+			else return {false, nullptr};
 		}
 
-		void makeReallocate(stack_instructions::InstructionList & list,
-		                    stack_instructions::Block & block) {
-			auto oldSize = block.getSize();
-			auto newSize = generateSize();
+		void makeReallocate() {
+			auto oldSize = currentBlock_->getSize();
+			size_ -= oldSize;
 
-			if (newSize < oldSize)
-				size_ -= oldSize - newSize;
-			else
-				size_ += newSize - oldSize;
+			auto newSize = generateSize();
+			size_ += newSize;
 
 			++count_;
 
+			currentBlock_->getList().emplace_back(
+				new stack_instructions::Reallocate(newSize)
+			);
+		}
 
+		void makeExpand() {
+			auto amount = generateSize();
+			size_ += amount;
 		}
 
 		bool isComplete() const {
