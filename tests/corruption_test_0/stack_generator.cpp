@@ -1,5 +1,6 @@
 #include "stack_generator.h"
 
+#include <cassert>
 #include <vector>
 
 namespace {
@@ -49,21 +50,39 @@ class Instruction
 using InstructionList = std::vector<Instruction>;
 
 
+
 class Allocate : public InstructionBase
 {
 	public:
-		Allocate(std::size_t size) : InstructionBase (size) {}
+		Allocate(std::size_t size) :
+			Allocate (size, {}) {}
 
 		Allocate(std::size_t size, InstructionList list) :
-			Allocate (size),
-      list_    (list) {}
+			InstructionBase (size),
+      list_           (list) {}
 
-		std::size_t getSize() const { return getValue(); }
+		std::size_t getSize()   const { return getValue(); }
 
+		InstructionList       & getList()       { return list_; }
 		InstructionList const & getList() const { return list_; }
 
 	private:
 		InstructionList list_;
+};
+
+
+class Block : public Allocate
+{
+	public:
+		template <class ... ArgTypes>
+		Block(Block * parent, ArgTypes ... args) :
+			Allocate(std::forward<ArgTypes>(args)...), parent_ {parent} {}
+
+		Block       * getParent()       { return parent_; }
+		Block const * getParent() const { return parent_; }
+
+	private:
+		Block * parent_;
 };
 
 
@@ -79,13 +98,14 @@ class Expand : public InstructionBase
 class Reallocate : public InstructionBase
 {
 	public:
-		Reallocate(std::size_t size) : Reallocate(size) {}
+		Reallocate(std::size_t size) : InstructionBase(size) {}
 
 		std::size_t getSize() const { return getValue(); }
 };
 
 
 	}
+
 
 
 class GeneratorInstance
@@ -99,7 +119,10 @@ class GeneratorInstance
 				instructions_      {instructions},
 				randomEngine_      {randomEngine},
 				generationArgs_    (generationArgs),
-				allowedOperations_ (allowedOperations) {
+				allowedOperations_ (allowedOperations),
+				currentBlock_ {nullptr},
+				size_  {0},
+				count_ {0} {
 
 			generate();
 		}
@@ -117,32 +140,41 @@ class GeneratorInstance
 		};
 
 		void generate() {
-			std::size_t size  {0};
-			std::size_t count {0};
-
 			stack_instructions::InstructionList list;
 
-			stack_instructions::InstructionList * currentList {&list};
+			while (count_ < generationArgs_.minInstructionCount) {
+				if (currentBlock_ == nullptr) {
+					currentBlock_ = makeBlock(list, nullptr);
+				}
 
-			while (true) {
-				auto nextSize = generateSize(generationArgs_.totalSize - count);
+				else {
+					Action action;
+					if (size_ == generationArgs_.maxAllocationSize) {
+						action = Action::END_BLOCK;
+					}
+					else {
+						action = randomAction();
+					}
 
-				size += nextSize;
-				++count;
+					switch (action) {
+						case Action::END_BLOCK:
+							currentBlock_ = currentBlock_->getParent();
+							break;
 
-				currentList->emplace_back(stack_instructions::Allocate(nextSize));
+						case Action::ALLOCATE:
+							currentBlock_ = makeBlock();
+							break;
 
-				auto action = randomAction();
-
-				switch (action) {
-					case END_BLOCK:
+						case Action::REALLOCATE:
+							makeReallocate();
+					}
 				}
 			}
 		}
 
-		std::size_t generateSize(std::size_t remainingSpace) const {
+		std::size_t generateSize() const {
 			auto max = std::min(generationArgs_.maxAllocationSize,
-			                    remainingSpace);
+			                    generationArgs_.totalSize - size_);
 
 			std::uniform_int_distribution<std::size_t> distribution {
 				generationArgs_.minAllocationSize, max
@@ -160,12 +192,62 @@ class GeneratorInstance
 			return static_cast<Action>(distribution(randomEngine_));
 		}
 
+		stack_instructions::Block * makeBlock() {
+			return makeBlock(currentBlock_->getList(), currentBlock_);
+		}
+
+
+		stack_instructions::Block *
+		makeBlock(stack_instructions::InstructionList & list,
+		          stack_instructions::Block           * parentBlock) {
+			auto nextSize = generateSize();
+
+			size_  += nextSize;
+			count_ += 2;
+
+			list.emplace_back(
+				stack_instructions::Block(parentBlock, nextSize)
+			);
+
+			return &static_cast<stack_instructions::Block&>(list.back());
+		}
+
+		void makeReallocate(stack_instructions::InstructionList & list,
+		                    stack_instructions::Block & block) {
+			auto oldSize = block.getSize();
+			auto newSize = generateSize();
+
+			if (newSize < oldSize)
+				size_ -= oldSize - newSize;
+			else
+				size_ += newSize - oldSize;
+
+			++count_;
+
+
+		}
+
+		bool isComplete() const {
+			auto maxSize = generationArgs_.maxAllocationSize;
+
+			assert(maxSize <= size_);
+
+			return (
+				size_  == maxSize &&
+				count_ >= generationArgs_.minInstructionCount
+			);
+		}
+
 
 
 		InstructionList                  & instructions_;
 		StackGenerator::RandomEngineType & randomEngine_;
 		GenerationArgPack          const & generationArgs_;
 		AllowedOperations                  allowedOperations_;
+		stack_instructions::Block        * currentBlock_;
+
+		std::size_t size_;
+		std::size_t count_;
 };
 
 }
