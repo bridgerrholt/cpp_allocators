@@ -141,16 +141,20 @@ class GeneratorInstance
 			_END   = 4
 		};
 
-		void generate() {
+		bool generate() {
 			stack_instructions::InstructionList list;
+
+			bool success {true};
 
 			while (count_ < generationArgs_.minInstructionCount) {
 				if (currentBlock_ == nullptr) {
-					auto result = makeBlock(list, nullptr);
-					if (std::get<0>(result))
-						currentBlock_ = std::get<1>(result);
-					else
+					stack_instructions::Block * nextBlock;
+					if (makeBlock(nextBlock, list, nullptr))
+						currentBlock_ = nextBlock;
+					else {
+						success = false;
 						break;
+					}
 				}
 
 				else {
@@ -181,6 +185,11 @@ class GeneratorInstance
 					}
 				}
 			}
+
+			if (!success)
+				return false;
+
+			return true;
 		}
 
 		bool generateSize(std::size_t & outSize) const {
@@ -213,14 +222,14 @@ class GeneratorInstance
 			return static_cast<Action>(distribution(randomEngine_));
 		}
 
-		stack_instructions::Block * makeBlock() {
-			auto result = makeBlock(currentBlock_->getList(), currentBlock_);
-			return std::get<1>(result);
+		bool makeBlock(stack_instructions::Block * & outBlock) {
+			return makeBlock(outBlock, currentBlock_->getList(), currentBlock_);
 		}
 
-		// False if generateSize() failed
-		std::pair<bool, stack_instructions::Block *>
-		makeBlock(stack_instructions::InstructionList & list,
+		// False if generateSize() failed.
+		bool
+		makeBlock(stack_instructions::Block         * & outBlock,
+							stack_instructions::InstructionList & list,
 		          stack_instructions::Block           * parentBlock) {
 			std::size_t nextSize;
 			if (generateSize(nextSize)) {
@@ -231,17 +240,26 @@ class GeneratorInstance
 					new stack_instructions::Block(parentBlock, nextSize)
 				);
 
-				return {true, &static_cast<stack_instructions::Block&>(*list.back())};
+				outBlock = &static_cast<stack_instructions::Block&>(*list.back());
+
+				return true;
 			}
 
-			else return {false, nullptr};
+			else {
+				return false;
+			}
 		}
 
-		void makeReallocate() {
+		bool makeReallocate() {
 			auto oldSize = currentBlock_->getSize();
 			size_ -= oldSize;
 
-			auto newSize = generateSize();
+			std::size_t newSize;
+			if (!generateSize(newSize)) {
+				size_ += oldSize;
+				return false;
+			}
+
 			size_ += newSize;
 
 			++count_;
@@ -249,6 +267,8 @@ class GeneratorInstance
 			currentBlock_->getList().emplace_back(
 				new stack_instructions::Reallocate(newSize)
 			);
+
+			return true;
 		}
 
 		void makeExpand() {
