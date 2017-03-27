@@ -79,13 +79,12 @@ class alignas(alignment) AlignedType :
 
 
 template <class t_Policy>
-class alignas(t_Policy::alignment) Allocator : private t_Policy {
+class alignas(t_Policy::alignment)
+Allocator : private t_Policy {
 	public:
 		using Policy = t_Policy;
 		using Handle = RawBlock;
 
-		/// Possibly undefined behavior if the swap function for the array
-		/// requires the copying of elements.
 		friend void swap(Allocator & first, Allocator & second) {
 			using std::swap;
 
@@ -95,15 +94,18 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 
 		Allocator() : Allocator(Policy()) {}
 
-		constexpr Allocator(Policy policy) :
-			Policy                 (std::move(policy)),
+		Allocator(Policy policy) :
+			Policy            (std::move(policy)),
 			allocateByteHint_ {0} {
 
 			deallocateAll();
 
-			assert(reinterpret_cast<uintptr_t>(
+			// Make sure the array is aligned correctly.
+			assert(
+				reinterpret_cast<uintptr_t>(
 				       Policy::getArray().data()
-			       ) % Policy::alignment == 0);
+				) % Policy::alignment == 0
+			);
 		}
 
 		Allocator(Allocator && other) :
@@ -126,7 +128,7 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 		}
 
 		constexpr SizeType getStorageSize() const {
-			return Policy::getStorageSize();
+			return Policy::getAttributes().getStorageSize();
 		}
 
 		template <class T>
@@ -156,39 +158,13 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 			return count;
 		}
 
+		// Allocate
 		Handle allocateBlocks(SizeType blockCount) {
 			return allocate(getAttributes().getBlockSize() * blockCount);
 		}
 
 		Handle allocate(SizeType size) {
-			// An allocation takes place even if the size is 0.
-			size = calcRequiredSize(size);
-
-			// The amount of blocks that must be reserved for the allocation.
-			std::size_t blocksRequired {size / getAttributes().getBlockSize()};
-
-			// The block count must be divisible by the element size in bits.
-			std::size_t const metaEnd {
-				getAttributes().getBlockCount() / arrayElementSizeBits
-			};
-
-			// Try allocating on the last half then the first half.
-			auto ptr = attemptAllocation(
-				blocksRequired, allocateByteHint_, metaEnd
-			);
-
-			if (ptr == nullptr) {
-				ptr = attemptAllocation(
-					blocksRequired, 0, allocateByteHint_
-				);
-			}
-
-			if (ptr == nullptr) {
-				return Handle::makeNullBlock();
-			}
-			else {
-				return {ptr, size};
-			}
+			return allocate(size, Policy::alignment);
 		}
 
 		constexpr Handle allocateAll() {
@@ -201,7 +177,14 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 			return {getBlockPtr(0), Policy::getStorageSize()};
 		}
 
+		Handle allocateAligned(SizeType size, SizeType alignment) {
+			assert(Policy::getBlockSize % alignment == 0);
 
+			return allocate(size, alignment);
+		}
+
+
+		// Deallocate
 		constexpr void deallocate(NullBlock) const {}
 
 		void deallocate(Handle block) {
@@ -247,8 +230,9 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 			allocateByteHint_ = 0;
 		}
 
+
 		bool reallocate(Handle & block, SizeType newSize) {
-			newSize = Policy::calcNeededSize(newSize);
+			newSize = calcRequiredSize(newSize);
 			auto const blockSize = block.getSize();
 
 			if (newSize < blockSize) {
@@ -282,7 +266,7 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 			if (amount == 0)
 				return true;
 
-			auto extra = Policy::calcNeededSize(amount);
+			auto extra = calcRequiredSize(amount);
 
 			auto beginPtr =
 				static_cast<ConstPointer>(block.getPtr()) + block.getSize();
@@ -294,7 +278,7 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 
 			bool fits;
 
-			if (Policy::getBlockCount() < endBlock)
+			if (Policy::getAttributes().getBlockCount() < endBlock)
 				fits = false;
 
 			else {
@@ -319,6 +303,7 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 
 			return false;
 		}
+
 
 		bool owns(Handle block) {
 			auto ptr = static_cast<Pointer>(block.getPtr());
@@ -377,6 +362,7 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 			return count * Policy::getBlockSize();
 		}
 
+		/// @return Second block.
 		Handle splitBlock(Handle & block, SizeType firstBlockSize) const {
 			firstBlockSize = calcRequiredSize(firstBlockSize);
 
@@ -397,9 +383,43 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 		using Pointer      = ArrayElement       *;
 		using ConstPointer = ArrayElement const *;
 
+		Handle allocate(SizeType size, SizeType alignment) {
+			auto multiple = Policy::alignment / alignment;
+
+			// An allocation takes place even if the size is 0.
+			size = calcRequiredSize(size);
+
+			// The amount of blocks that must be reserved for the allocation.
+			std::size_t blocksRequired {size / getAttributes().getBlockSize()};
+
+			// The block count must be divisible by the element size in bits.
+			std::size_t const metaEnd {
+				getAttributes().getBlockCount() / arrayElementSizeBits
+			};
+
+			// Try allocating on the last half then the first half.
+			auto ptr = attemptAllocation(
+				blocksRequired, allocateByteHint_, metaEnd
+			);
+
+			if (ptr == nullptr) {
+				ptr = attemptAllocation(
+					blocksRequired, 0, allocateByteHint_
+				);
+			}
+
+			if (ptr == nullptr) {
+				return Handle::makeNullBlock();
+			}
+			else {
+				return {ptr, size};
+			}
+		}
+
 		Pointer attemptAllocation(SizeType blocksRequired,
 		                          SizeType startByte,
-		                          SizeType endByte) {
+		                          SizeType endByte,
+															SizeType step = 1) {
 			SizeType currentRegionSize {0};
 			auto byte = startByte;
 
@@ -419,7 +439,7 @@ class alignas(t_Policy::alignment) Allocator : private t_Policy {
 					}
 				}
 
-				++byte;
+				byte += step;
 			}
 
 			return nullptr;
@@ -826,6 +846,7 @@ class TemplatedPolicy :
 
 		static constexpr SizeType getBlockCount()
 			{ return getAttributes().getBlockCount(); }*/
+
 
 		static constexpr AttributesReturnType getAttributes() {
 			return {minimumBlockSize, t_blockCount};

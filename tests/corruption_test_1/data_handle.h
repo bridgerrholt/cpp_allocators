@@ -20,14 +20,7 @@ class DataHandle
 		DataHandle(Generator & randomGenerator, RawBlock block) :
 			block_ (std::move(block)) {
 
-			std::uniform_int_distribution<ByteType> dist {0, 255};
-
-			filledData_.reserve(block_.getSize());
-			for (std::size_t i {0}; i < block_.getSize(); ++i) {
-				auto number = dist(randomGenerator);
-				filledData_.push_back(number);
-				getPtr()[i] = number;
-			}
+			refresh(randomGenerator);
 		}
 
 		bool test() const {
@@ -38,6 +31,33 @@ class DataHandle
 			}
 
 			return true;
+		}
+
+		template <class Generator>
+		void refresh(Generator & randomGenerator) {
+			std::uniform_int_distribution<ByteType> dist {0, 255};
+
+			filledData_.clear();
+			filledData_.reserve(block_.getSize());
+			for (std::size_t i {0}; i < block_.getSize(); ++i) {
+				auto number = dist(randomGenerator);
+				filledData_.push_back(number);
+				getPtr()[i] = number;
+			}
+		}
+
+		void dataString(std::string & str) {
+			for (std::size_t i {0}; i < block_.getSize(); ++i) {
+				str += std::to_string(static_cast<unsigned int>(getPtr()[i])) + " ";
+			}
+		}
+
+		void set(RawBlock block) {
+			block_ = block;
+		}
+
+		RawBlock & get() {
+			return block_;
 		}
 
 
