@@ -23,6 +23,7 @@
 #include "common/common_types.h"
 #include "wrappers/allocator_wrapper.h"
 #include "common/round_up_to_multiple.h"
+#include "common/calc_lcm.h"
 
 #include "multithread/thread.h"
 
@@ -184,8 +185,8 @@ Allocator : private t_Policy {
 			);
 
 			if (ptr == nullptr) {
-				ptr = attemptAllocation(
-					blocksRequired, 0, metaEnd
+				ptr = attemptAllocationToHint(
+					blocksRequired, allocateByteHint_
 				);
 			}
 
@@ -207,12 +208,18 @@ Allocator : private t_Policy {
 			// The block count must be divisible by the element size in bits.
 			auto metaEnd = getMetaEnd();
 
-			auto hintPtr = getBlockPtr(getBlockIndex(allocationByteHint_, 0));
+			auto hintPtr = getBlockPtr(getBlockIndex(allocateByteHint_, 0));
 			auto nextPtr = findNextAligned(hintPtr, alignment);
+
+			auto lcm = common::calcLcm(
+				Policy::getBlockSize(), alignment
+			);
+
+			auto step = lcm / Policy::getBlockSize();
 
 			// Try allocating on the last half then the first half.
 			auto ptr = attemptAllocationFromHint(
-				blocksRequired, allocateByteHint_
+				blocksRequired, getBlockIndex(nextPtr), step
 			);
 
 			if (ptr == nullptr) {
@@ -367,6 +374,17 @@ Allocator : private t_Policy {
 			return (
 				ptr >= Policy::getElements() + getAttributes().getMetaDataSize() &&
 				beforeEnd(ptr)
+			);
+		}
+
+		bool withinBounds(Handle block) {
+			auto ptrLeft  = static_cast<Pointer>(block.getPtr());
+			auto ptrRight = ptrLeft + block.getSize();
+
+			return (
+				ptrLeft >= Policy::getElements() +
+				           getAttributes().getMetaDataSize() &&
+				ptrRight <= Policy::getElements() + getAttributes().getTotalSize()
 			);
 		}
 
@@ -527,6 +545,7 @@ Allocator : private t_Policy {
 		             SizeType   byte,
 		             SizeType   blocksRequired) {
 			class OccupiedCatcher {
+				public:
 					void operator()() { found = true; }
 
 					bool & found;
@@ -563,6 +582,7 @@ Allocator : private t_Policy {
 		                          SizeType   blocksRequired,
 		                          SizeType   hintByte,
 		                          SizeType   step = 1) {
+			std::cout << blocksRequired << ", " << hintByte << ", " << step << '\n';
 			SizeType currentRegionSize {0};
 			SizeType byte {0};
 			auto endByte = getMetaEnd();
@@ -579,14 +599,20 @@ Allocator : private t_Policy {
 				byte += step;
 			}
 
+			byte += step;
+
+			std::cout << "Second stage " << byte << ", " << currentRegionSize << ", " << step << '\n';
 			while (true) {
 				bool foundOccupied;
 
 				if (tryByte(foundOccupied, outBit, currentRegionSize,
 				            byte, blocksRequired)) {
 					outByte = byte;
+					std::cout << byte << '\n';
 					return true;
 				}
+
+				std::cout << foundOccupied << '\n';
 
 				if (foundOccupied || endByte - step <= byte)
 					return false;
@@ -597,35 +623,39 @@ Allocator : private t_Policy {
 
 		Pointer attemptAllocation(SizeType blocksRequired,
 		                          SizeType startByte,
-		                          SizeType endByte) {
+		                          SizeType endByte,
+		                          SizeType step = 1) {
 			SizeType byte;
 			ByteType bit;
 
-			if (findAllocation(byte, bit, blocksRequired, startByte, endByte))
+			if (findAllocation(byte, bit, blocksRequired, startByte, endByte, step))
 				return guaranteedAllocate(byte, bit, blocksRequired);
 
 			else return nullptr;
 		}
 
 		Pointer attemptAllocationFromHint(SizeType blocksRequired,
-		                                  SizeType hintByte) {
+		                                  SizeType hintByte,
+		                                  SizeType step = 1) {
 			SizeType byte;
 			ByteType bit;
 
-			if (findAllocation(byte, bit, blocksRequired, hintByte, getMetaEnd()))
+			if (findAllocation(byte, bit, blocksRequired, hintByte, getMetaEnd(), step))
 				return guaranteedAllocate(byte, bit, blocksRequired);
 
 			else return nullptr;
 		}
 
 		Pointer attemptAllocationToHint(SizeType blocksRequired,
-		                                SizeType hintByte) {
+		                                SizeType hintByte,
+																		SizeType step = 1) {
 			SizeType byte;
 			ByteType bit;
 
-			if (findAllocationToHint(byte, bit, blocksRequired, hintByte)) {
+			if (findAllocationToHint(byte, bit, blocksRequired, hintByte, step))
+				return guaranteedAllocate(byte, bit, blocksRequired);
 
-			}
+			else return nullptr;
 		}
 
 		Pointer attemptAllocationAligned(SizeType blocksRequired,

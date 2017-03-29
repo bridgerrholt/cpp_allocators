@@ -1,3 +1,4 @@
+#include <iostream>
 #include <array>
 
 #include <allocators/bitmapped_block.h>
@@ -10,13 +11,9 @@ int main(int argc, char* argv[])
 
 	AllocatorType allocator;
 
-	auto a = allocator.allocate(16 * 8);
-	auto b = allocator.allocate(16 * 8);
+	auto a = allocator.allocateAligned(16 * 8, 32);
+	std::cout << a.getPtr() << '\n';
 
-	allocator.deallocate(a);
-	allocator.deallocate(b);
-
-	auto c = allocator.allocate(16 * 16);
 
 	return 0;
 }
