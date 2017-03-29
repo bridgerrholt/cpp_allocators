@@ -211,12 +211,14 @@ Allocator : private t_Policy {
 			auto hintPtr = getBlockPtr(getBlockIndex(allocateByteHint_, 0));
 			auto nextPtr = findNextAligned(hintPtr, alignment);
 
+			std::cout << "calcLcm(" << Policy::getAttributes().getBlockSize() <<  ", " << alignment << ")\n";
 			auto lcm = common::calcLcm(
-				Policy::getBlockSize(), alignment
+				Policy::getAttributes().getBlockSize(), alignment
 			);
 
-			auto step = lcm / Policy::getBlockSize();
+			auto step = lcm / Policy::getAttributes().getBlockSize();
 
+			std::cout << "attemptAllocationFromHint()\n";
 			// Try allocating on the last half then the first half.
 			auto ptr = attemptAllocationFromHint(
 				blocksRequired, getBlockIndex(nextPtr), step
@@ -499,7 +501,7 @@ Allocator : private t_Policy {
 				if (reinterpret_cast<std::uintptr_t>(current) % alignment == 0)
 					return current;
 
-				current += Policy::getBlockSize();
+				current += Policy::getAttributes().getBlockSize();
 			}
 
 			return nullptr;
@@ -581,11 +583,14 @@ Allocator : private t_Policy {
 		                          ByteType & outBit,
 		                          SizeType   blocksRequired,
 		                          SizeType   hintByte,
+		                          SizeType   start = 0,
 		                          SizeType   step = 1) {
 			std::cout << blocksRequired << ", " << hintByte << ", " << step << '\n';
 			SizeType currentRegionSize {0};
-			SizeType byte {0};
+			SizeType byte {start};
 			auto endByte = getMetaEnd();
+
+			if (byte > hintByte) return false;
 
 			while (true) {
 				if (tryByte(outBit, currentRegionSize, byte, blocksRequired)) {
@@ -648,11 +653,12 @@ Allocator : private t_Policy {
 
 		Pointer attemptAllocationToHint(SizeType blocksRequired,
 		                                SizeType hintByte,
+		                                SizeType start = 0,
 																		SizeType step = 1) {
 			SizeType byte;
 			ByteType bit;
 
-			if (findAllocationToHint(byte, bit, blocksRequired, hintByte, step))
+			if (findAllocationToHint(byte, bit, blocksRequired, hintByte, start, step))
 				return guaranteedAllocate(byte, bit, blocksRequired);
 
 			else return nullptr;
