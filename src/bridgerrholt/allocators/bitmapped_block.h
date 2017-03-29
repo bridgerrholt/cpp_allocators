@@ -169,64 +169,6 @@ Allocator : private t_Policy {
 		}
 
 		Handle allocate(SizeType size) {
-			// byte = allocateByteHint_
-			// bit = 0
-			// regionSize = 0
-			// bool foundOccupied = false
-			//
-			//  # Search until first occupied block
-			// while byte < byteEnd
-			//   while true
-			//     if bit == 8
-			//       bit = 0
-			//       break
-			//     if (isSet(byte, bit))
-			//       foundOccupied = true
-			//       break
-			//     else
-			//       ++regionSize
-			//       if regionSize == blockCount
-			//         goto found
-			//   ++byte
-			//
-			//  # Search until end of array
-			// if foundOccupied
-			//   end = byte + 1
-			// else
-			//   end = allocateByteHint_
-			//
-			// regionSize = 0
-			// ++bit
-			// while byte < byteEnd
-			//   while true
-			//     if bit == 8
-			//       bit = 0
-			//       break
-			//     if (isSet(byte, bit))
-			//       regionSize = 0
-			//     else
-			//       ++regionSize
-			//       if regionSize == blockCount
-			//         goto found
-			//   ++byte
-			//
-			//  # Search from the beginning until the previously found occupied block or the hint
-			// byte = 0
-			// bit = 0
-			// while byte < end:
-			//   for bit in [0, 8)
-			//     if (isSet(byte, bit))
-			//       regionSize = 0
-			//     else
-			//       ++regionSize
-			//       if regionSize == blockCount
-			//         goto found
-			//   ++byte
-			//
-			// found:
-			//   return guaranteedAllocate()
-			//
-
 			// An allocation takes place even if the size is 0.
 			size = calcRequiredSize(size);
 
@@ -256,11 +198,6 @@ Allocator : private t_Policy {
 		}
 
 		Handle allocateAligned(SizeType size, SizeType alignment) {
-			//
-
-
-			auto multiple = Policy::alignment / alignment;
-
 			// An allocation takes place even if the size is 0.
 			size = calcRequiredSize(size);
 
@@ -268,11 +205,28 @@ Allocator : private t_Policy {
 			std::size_t blocksRequired {size / getAttributes().getBlockSize()};
 
 			// The block count must be divisible by the element size in bits.
-			std::size_t const metaEnd {
-				getAttributes().getBlockCount() / arrayElementSizeBits
-			};
+			auto metaEnd = getMetaEnd();
 
-			return attemptAllocation(blocksRequired, size);
+			auto hintPtr = getBlockPtr(getBlockIndex(allocationByteHint_, 0));
+			auto nextPtr = findNextAligned(hintPtr, alignment);
+
+			// Try allocating on the last half then the first half.
+			auto ptr = attemptAllocationFromHint(
+				blocksRequired, allocateByteHint_
+			);
+
+			if (ptr == nullptr) {
+				ptr = attemptAllocation(
+					blocksRequired, 0, metaEnd
+				);
+			}
+
+			if (ptr == nullptr) {
+				return Handle::makeNullBlock();
+			}
+			else {
+				return {ptr, size};
+			}
 		}
 
 		constexpr Handle allocateAll() {
@@ -518,6 +472,19 @@ Allocator : private t_Policy {
 			else {
 				return {ptr, size};
 			}
+		}
+
+		Pointer findNextAligned(Pointer start, std::size_t alignment) const {
+			auto current = start;
+
+			while (beforeEnd(current)) {
+				if (reinterpret_cast<std::uintptr_t>(current) % alignment == 0)
+					return current;
+
+				current += Policy::getBlockSize();
+			}
+
+			return nullptr;
 		}
 
 		template <class F>
