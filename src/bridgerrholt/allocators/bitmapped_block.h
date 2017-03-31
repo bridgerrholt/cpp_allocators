@@ -688,10 +688,18 @@ Allocator : private t_Policy {
 			auto nextStart = start;
 			auto i         = start;
 
-			// scan from nextStart
-			// if find an occupied block
-			//   increment nextStart past i
-			//   set i to nextStart
+			if (getMetaBit(i) == 0) {
+				++currentRegionSize;
+
+				if (currentRegionSize == blocksRequired) {
+					return guaranteedAllocate();
+				}
+
+				++i;
+			}
+			else {
+				i += step;
+			}
 
 			while (i < end) {
 				if (getMetaBit(i) == 0) {
@@ -699,22 +707,20 @@ Allocator : private t_Policy {
 
 					// Allocation will be successful.
 					if (currentRegionSize == blocksRequired) {
-						outBit = bit;
-						return true;
+						return guaranteedAllocate();
 					}
+
+					++i;
 				}
 				else {
 					currentRegionSize = 0;
 					auto previousIndex = i;
-					// TODO: Make work when i == start.
 					i = start + common::roundUpToMultiple(i - start, step);
 
 					// If i is less than previousIndex, an overflow occurred.
 					if (i >= end || i < previousIndex)
 						break;
 				}
-
-				++i;
 			}
 		}
 
