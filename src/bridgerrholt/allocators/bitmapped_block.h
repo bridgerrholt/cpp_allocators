@@ -220,7 +220,10 @@ Allocator : private t_Policy {
 
 			std::cout << "attemptAllocationFromHint()\n";
 			// Try allocating on the last half then the first half.
-			auto ptr = attemptAllocationFromHint(
+			/*auto ptr = attemptAllocationFromHint(
+				blocksRequired, getBlockIndex(nextPtr), step
+			);*/
+			auto ptr = attemptAlignedAllocation(
 				blocksRequired, getBlockIndex(nextPtr), step
 			);
 
@@ -674,6 +677,45 @@ Allocator : private t_Policy {
 			/*while (true) {
 				if (findAllocation(byte, bit, blocksRequired, startByte, endByte))
 			}*/
+		}
+
+		Pointer attemptAlignedAllocation(SizeType blocksRequired,
+		                                 SizeType start,
+		                                 SizeType step) {
+			SizeType currentRegionSize {0};
+
+			auto end       = getMetaEnd();
+			auto nextStart = start;
+			auto i         = start;
+
+			// scan from nextStart
+			// if find an occupied block
+			//   increment nextStart past i
+			//   set i to nextStart
+
+			while (i < end) {
+				if (getMetaBit(i) == 0) {
+					++currentRegionSize;
+
+					// Allocation will be successful.
+					if (currentRegionSize == blocksRequired) {
+						outBit = bit;
+						return true;
+					}
+				}
+				else {
+					currentRegionSize = 0;
+					auto previousIndex = i;
+					// TODO: Make work when i == start.
+					i = start + common::roundUpToMultiple(i - start, step);
+
+					// If i is less than previousIndex, an overflow occurred.
+					if (i >= end || i < previousIndex)
+						break;
+				}
+
+				++i;
+			}
 		}
 
 		Handle attemptAllocation(SizeType blocksRequired, SizeType size) {
