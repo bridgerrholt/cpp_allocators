@@ -170,14 +170,8 @@ Allocator : private t_Policy {
 		}
 
 		Handle allocate(SizeType size) {
-			// An allocation takes place even if the size is 0.
-			size = calcRequiredSize(size);
-
-			// The amount of blocks that must be reserved for the allocation.
-			std::size_t blocksRequired {size / getAttributes().getBlockSize()};
-
-			// The block count must be divisible by the element size in bits.
-			auto metaEnd = getMetaEnd();
+			SizeType blocksRequired;
+			allocationSetup(size, blocksRequired);
 
 			// Try allocating on the last half then the first half.
 			auto ptr = attemptAllocationFromHint(
@@ -199,37 +193,34 @@ Allocator : private t_Policy {
 		}
 
 		Handle allocateAligned(SizeType size, SizeType alignment) {
-			// An allocation takes place even if the size is 0.
-			size = calcRequiredSize(size);
+			SizeType blocksRequired;
+			allocationSetup(size, blocksRequired);
 
-			// The amount of blocks that must be reserved for the allocation.
-			std::size_t blocksRequired {size / getAttributes().getBlockSize()};
 
-			// The block count must be divisible by the element size in bits.
-			auto metaEnd = getMetaEnd();
-
-			auto hintPtr = getBlockPtr(getBlockIndex(allocateByteHint_, 0));
-			auto nextPtr = findNextAligned(hintPtr, alignment);
-
-			std::cout << "calcLcm(" << Policy::getAttributes().getBlockSize() <<  ", " << alignment << ")\n";
+			std::cout << "calcLcm(" << getAttributes().getBlockSize() <<  ", " << alignment << ")\n";
 			auto lcm = common::calcLcm(
-				Policy::getAttributes().getBlockSize(), alignment
+				getAttributes().getBlockSize(), alignment
 			);
 
-			auto step = lcm / Policy::getAttributes().getBlockSize();
+			auto step = lcm / getAttributes().getBlockSize();
 
 			std::cout << "attemptAllocationFromHint()\n";
 			// Try allocating on the last half then the first half.
 			/*auto ptr = attemptAllocationFromHint(
 				blocksRequired, getBlockIndex(nextPtr), step
 			);*/
-			auto ptr = attemptAlignedAllocation(
-				blocksRequired, getBlockIndex(nextPtr), step
+
+			auto hintPtr = getBlockPtr(getBlockIndex(allocateByteHint_, 0));
+			auto firstPtr = findNextAligned(hintPtr, alignment);
+			auto firstPtrIndex = getBlockIndex(firstPtr);
+			auto ptr = attemptAlignedAllocationFromIndex(
+				blocksRequired, firstPtrIndex, step
 			);
 
 			if (ptr == nullptr) {
-				ptr = attemptAllocation(
-					blocksRequired, 0, metaEnd
+				auto nextPtr = findNextAligned(Policy::getElements(), alignment);
+				ptr = attemptAlignedAllocationToHint(
+					blocksRequired, getBlockIndex(nextPtr), firstPtrIndex, step
 				);
 			}
 
@@ -463,6 +454,14 @@ Allocator : private t_Policy {
 		using LockType  = std::lock_guard<MutexType>;
 #endif
 
+		/// Calculates values for variables common to all allocation methods.
+		void allocationSetup(SizeType & size,
+		                     SizeType & outBlocksRequired) const {
+			size = calcRequiredSize(size);
+
+			// The amount of blocks that must be reserved for the allocation.
+			outBlocksRequired = size / getAttributes().getBlockSize();
+		}
 
 		Handle allocate(SizeType size, SizeType alignment) {
 			auto multiple = Policy::alignment / alignment;
@@ -510,12 +509,15 @@ Allocator : private t_Policy {
 			return nullptr;
 		}
 
+		/// Iterates through all the bits in a specified meta byte.
+		/// Accepts a functor to be executed upon finding a set bit.
+		/// @return Whether currentRegionSize reaches blocksRequired.
 		template <class F>
-		bool tryByteLoop(ByteType & outBit,
-			               SizeType & currentRegionSize,
-		                 SizeType   byte,
-		                 SizeType   blocksRequired,
-		                 F          occupiedBlockFunction) {
+		bool testByte(ByteType & outBit,
+	                SizeType & currentRegionSize,
+	                SizeType   byte,
+	                SizeType   blocksRequired,
+	                F          occupiedBlockFunction = [](){}) {
 			for (ByteType bit {0}; bit < arrayElementSizeBits; ++bit) {
 				if (getMetaBit(byte, bit) == 0) {
 					++currentRegionSize;
@@ -537,18 +539,13 @@ Allocator : private t_Policy {
 			return false;
 		}
 
-		bool tryByte(ByteType & outBit,
-			           SizeType & currentRegionSize,
-		             SizeType   byte,
-		             SizeType   blocksRequired) {
-			return tryByteLoop(outBit, currentRegionSize, byte, blocksRequired, [](){});
-		}
-
-		bool tryByte(bool     & outFoundOccupied,
-		             ByteType & outBit,
-			           SizeType & currentRegionSize,
-		             SizeType   byte,
-		             SizeType   blocksRequired) {
+		/// Indicates whether an occupied block was found or not.
+		bool testByte(bool     & outFoundOccupied,
+		              ByteType & outBit,
+			            SizeType & currentRegionSize,
+		              SizeType   byte,
+		              SizeType   blocksRequired) {
+			// Passes outFoundOccupied to the templated function as a functor.
 			class OccupiedCatcher {
 				public:
 					void operator()() { found = true; }
@@ -556,8 +553,11 @@ Allocator : private t_Policy {
 					bool & found;
 			} catcher {outFoundOccupied};
 
-			return tryByteLoop<OccupiedCatcher&>(
-				outBit, currentRegionSize, byte, blocksRequired, catcher
+			outFoundOccupied = false;
+
+			return testByte(
+				outBit, currentRegionSize, byte, blocksRequired,
+				[&outFoundOccupied] { outFoundOccupied = true; }
 			);
 		}
 
@@ -571,7 +571,7 @@ Allocator : private t_Policy {
 			auto byte = startByte;
 
 			while (byte < endByte) {
-				if (tryByte(outBit, currentRegionSize, byte, blocksRequired)) {
+				if (testByte(outBit, currentRegionSize, byte, blocksRequired)) {
 					outByte = byte;
 					return true;
 				}
@@ -596,7 +596,7 @@ Allocator : private t_Policy {
 			if (byte > hintByte) return false;
 
 			while (true) {
-				if (tryByte(outBit, currentRegionSize, byte, blocksRequired)) {
+				if (testByte(outBit, currentRegionSize, byte, blocksRequired)) {
 					outByte = byte;
 					return true;
 				}
@@ -613,8 +613,8 @@ Allocator : private t_Policy {
 			while (true) {
 				bool foundOccupied;
 
-				if (tryByte(foundOccupied, outBit, currentRegionSize,
-				            byte, blocksRequired)) {
+				if (testByte(foundOccupied, outBit, currentRegionSize,
+				             byte, blocksRequired)) {
 					outByte = byte;
 					std::cout << byte << '\n';
 					return true;
@@ -667,61 +667,127 @@ Allocator : private t_Policy {
 			else return nullptr;
 		}
 
-		Pointer attemptAllocationAligned(SizeType blocksRequired,
-		                                 SizeType startByte,
-		                                 SizeType endByte,
-		                                 SizeType alignment) {
-			SizeType byte;
-			SizeType bit;
-
-			/*while (true) {
-				if (findAllocation(byte, bit, blocksRequired, startByte, endByte))
-			}*/
-		}
-
-		Pointer attemptAlignedAllocation(SizeType blocksRequired,
-		                                 SizeType start,
-		                                 SizeType step) {
+		Pointer attemptAlignedAllocationFromIndex(SizeType blocksRequired,
+		                                          SizeType startIndex,
+		                                          SizeType step) {
 			SizeType currentRegionSize {0};
 
-			auto end       = getMetaEnd();
-			auto nextStart = start;
-			auto i         = start;
+			auto end       = getAttributes().getBlockCount();
+			auto nextStart = startIndex;
+			auto i         = startIndex;
 
-			if (getMetaBit(i) == 0) {
-				++currentRegionSize;
+			Pointer lambdaOut;
+			bool    allocated {false};
 
-				if (currentRegionSize == blocksRequired) {
-					return guaranteedAllocate();
-				}
-
-				++i;
-			}
-			else {
-				i += step;
-			}
-
-			while (i < end) {
+			// Executed before the main loop and within the main loop.
+			auto loopBody = [blocksRequired, &currentRegionSize,
+				               &i, &lambdaOut, &allocated] {
 				if (getMetaBit(i) == 0) {
 					++currentRegionSize;
 
-					// Allocation will be successful.
 					if (currentRegionSize == blocksRequired) {
-						return guaranteedAllocate();
+						lambdaOut = guaranteedAllocate(
+							getMetaIndex(i), getMetaBitIndex(i), blocksRequired
+						);
+						allocated = true;
 					}
 
 					++i;
+					return true;
 				}
-				else {
-					currentRegionSize = 0;
-					auto previousIndex = i;
-					i = start + common::roundUpToMultiple(i - start, step);
 
-					// If i is less than previousIndex, an overflow occurred.
-					if (i >= end || i < previousIndex)
-						break;
+				else return false;
+			};
+
+			// First iteration to ensure i advances past the start.
+			if (loopBody()) {
+				if (allocated) return lambdaOut;
+			}
+			else i += step;
+
+			// Check if i overflowed.
+			if (i > startIndex) {
+
+				// Loop as normal until the end.
+				while (i < end) {
+					if (loopBody()) {
+						if (allocated) return lambdaOut;
+					}
+					else {
+						currentRegionSize = 0;
+						auto previousIndex = i;
+						i = startIndex + common::roundUpToMultiple(i - startIndex, step);
+
+						// If i is less than previousIndex, an overflow occurred.
+						if (i >= end || i < previousIndex)
+							break;
+					}
 				}
 			}
+
+			return nullptr;
+		}
+
+		Pointer attemptAlignedAllocationToIndex(SizeType blocksRequired,
+	                                          SizeType endIndex,
+	                                          SizeType step) {
+			SizeType currentRegionSize {0};
+			SizeType startIndex {0};
+
+			auto end       = getAttributes().getBlockCount();
+			auto nextStart = startIndex;
+			auto i         = startIndex;
+
+			Pointer lambdaOut;
+			bool    allocated {false};
+
+			// Executed before the main loop and within the main loop.
+			auto loopBody = [blocksRequired, &currentRegionSize,
+				               &i, &lambdaOut, &allocated] {
+				if (getMetaBit(i) == 0) {
+					++currentRegionSize;
+
+					if (currentRegionSize == blocksRequired) {
+						lambdaOut = guaranteedAllocate(
+							getMetaIndex(i), getMetaBitIndex(i), blocksRequired
+						);
+						allocated = true;
+					}
+
+					++i;
+					return true;
+				}
+
+				else return false;
+			};
+
+			// First iteration to ensure i advances past the start.
+			if (loopBody()) {
+				if (allocated) return lambdaOut;
+			}
+			else i += step;
+
+			// Check if i overflowed.
+			if (i > startIndex) {
+
+				// Loop as normal until the end.
+				while (i < end) {
+					if (loopBody()) {
+						if (allocated) return lambdaOut;
+					}
+					else {
+						currentRegionSize = 0;
+						auto previousIndex = i;
+						i = startIndex + common::roundUpToMultiple(i - startIndex, step);
+
+						// If i is less than previousIndex, an overflow occurred.
+						if (i >= end || i < previousIndex)
+							break;
+					}
+				}
+			}
+
+			return nullptr;
 		}
 
 		Handle attemptAllocation(SizeType blocksRequired, SizeType size) {
@@ -879,8 +945,8 @@ Allocator : private t_Policy {
 			return blockIndex / arrayElementSizeBits;
 		}
 
-		constexpr static unsigned getMetaBitIndex(SizeType blockIndex) {
-			return static_cast<unsigned>(blockIndex % arrayElementSizeBits);
+		constexpr static ByteType getMetaBitIndex(SizeType blockIndex) {
+			return static_cast<ByteType>(blockIndex % arrayElementSizeBits);
 		}
 
 		constexpr static SizeType getBlockIndex(SizeType metaIndex,

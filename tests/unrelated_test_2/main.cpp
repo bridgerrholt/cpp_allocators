@@ -16,6 +16,7 @@ int main(int argc, char* argv[])
 	std::cout << "Allocate\n";
 	auto a = allocator.allocateAligned(16 * 8, 32);
 	std::cout << a.getPtr() << '\n';
+	std::cout << reinterpret_cast<std::uintptr_t>(a.getPtr()) % 32 << '\n';
 
 
 	return 0;
