@@ -4,8 +4,9 @@
 #include <vector>
 #include <type_traits>
 
-#include "common/free_list_node.h"
+#include "common/calc_is_aligned.h"
 #include "common/common_types.h"
+#include "common/free_list_node.h"
 
 #include "multithread/thread.h"
 
@@ -104,6 +105,16 @@ Allocator : t_Policy
 			}
 
 			return nextSpot;
+		}
+
+		void * allocateAligned(SizeType alignment) {
+			auto nextSpot = static_cast<void*>(&root_.get());
+
+			if (common::calcIsAligned(nextSpot, alignment))
+				return allocate();
+
+			else
+				return nullptr;
 		}
 
 		constexpr void deallocate(NullBlock) const {}

@@ -1,9 +1,10 @@
 #ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_STACK_ALLOCATOR_H
 #define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_STACK_ALLOCATOR_H
 
-#include "traits/traits.h"
-#include "common/common_types.h"
 #include "blocks/block.h"
+#include "common/calc_is_aligned.h.h"
+#include "common/common_types.h"
+#include "traits/traits.h"
 
 namespace bridgerrholt {
 	namespace allocators {
@@ -45,6 +46,14 @@ class Allocator : private t_Policy
 			else {
 				return Handle::makeNullBlock();
 			}
+		}
+
+		Handle allocateAligned(SizeType size, SizeType alignment) {
+			if (common::calcIsAligned(next_, alignment))
+				return allocate(size);
+
+			else
+				return Handle::makeNullBlock();
 		}
 
 		/// Effectively deallocates and then allocates the whole container.

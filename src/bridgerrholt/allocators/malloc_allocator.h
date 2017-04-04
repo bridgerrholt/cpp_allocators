@@ -1,6 +1,7 @@
 #ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_MALLOC_ALLOCATOR_H
 #define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_MALLOC_ALLOCATOR_H
 
+#include <cstddef>
 #include <cstdlib>
 #include "common/common_types.h"
 
@@ -21,7 +22,18 @@ class MallocAllocator
 			return std::malloc(size);
 		}
 
-		/// TODO: allocateAligned(SizeType size, SizeType alignment)
+		/// Allocates the region but deallocates it if it's unaligned.
+		Handle allocateAligned(SizeType size, SizeType alignment) const {
+			auto ptr = allocate(size);
+
+			if (reinterpret_cast<std::uintptr_t>(ptr) % alignment == 0)
+				return ptr;
+
+			else {
+				deallocate(ptr);
+				return nullptr;
+			}
+		}
 
 		bool reallocate(Handle & ptr, SizeType newSize) const {
 			Handle newPtr {std::realloc(ptr, newSize)};
