@@ -2,7 +2,7 @@
 #define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_STACK_ALLOCATOR_H
 
 #include "blocks/block.h"
-#include "common/calc_is_aligned.h.h"
+#include "common/calc_is_aligned.h"
 #include "common/common_types.h"
 #include "traits/traits.h"
 
