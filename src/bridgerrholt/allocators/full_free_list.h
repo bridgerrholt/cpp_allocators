@@ -110,7 +110,7 @@ Allocator : t_Policy
 		void * allocateAligned(SizeType alignment) {
 			auto nextSpot = static_cast<void*>(&root_.get());
 
-			if (common::calcIsAligned(nextSpot, alignment))
+			if (bridgerrholt::common::calcIsAligned(nextSpot, alignment))
 				return allocate();
 
 			else

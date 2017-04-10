@@ -356,19 +356,19 @@ void runTestsOld()
 			getBitmappedData<SmallAllocator>().getBlockSize(), SmallAllocator, LargeAllocator
 		>;*/
 
-	using AllocatorType =
+	/*using AllocatorType =
 		AffixChecker<
 			BitmappedBlock::Templated<
 				VectorWrapper, smallBlockSize, 1024 * 1024 * 4
 			>, VarWrapper<int, 123>
-		>;
+		>;*/
 
 	using RuntimeAllocator =
 		BitmappedBlock::Runtime<VectorSingle>;
 
-	/*using AllocatorType = BitmappedBlock<
+	using AllocatorType = BitmappedBlock::Templated<
 		VectorWrapper, 16 * 16, 1024 * 1024
-	>;*/
+	>;
 
 	/*AllocatorType all {};
 	auto blk = all.allocate(32);
@@ -380,17 +380,19 @@ void runTestsOld()
 	using NewTestType = RandomSizeAllocationTest<NewAllocator, NewReturnTypeSimple>;
 	NewTestType newTest {"C++ 'new'", elementCount};
 
-	using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
-	AllocatorTestType allocatorTest {"Template Bitmap", elementCount};
+	/*using AllocatorTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
+	AllocatorTestType allocatorTest {"Template Bitmap", elementCount};*/
 
 	using SemiFreeListTestType = RandomSizeAllocationTest<SemiFreeListAllocator, AllocatorReturnTypeSimple>;
 	SemiFreeListTestType freeListTest {"Semi- Free List", elementCount};
 
 	using RuntimeTestType = RandomSizeAllocationTest<RuntimeAllocator, AllocatorReturnTypeSimple>;
-	//RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getAttributes().getBlockSize(), AllocatorType::Policy::getAttributes().getBlockCount()}), elementCount};
-	//RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getAttributes().getBlockCount() * 8}), elementCount};
+	using TemplatedTestType = RandomSizeAllocationTest<AllocatorType, AllocatorReturnTypeSimple>;
+	RuntimeTestType runtimeTest1 {"Runtime Bitmap 1", RuntimeAllocator({AllocatorType::Policy::getAttributes().getBlockSize(), AllocatorType::Policy::getAttributes().getBlockCount()}), elementCount};
+	RuntimeTestType runtimeTest2 {"Runtime Bitmap 2", RuntimeAllocator({largeBlockSize, AllocatorType::Policy::getAttributes().getBlockCount() * 8}), elementCount};
+	TemplatedTestType templatedTest {"Templated Test", elementCount};
 
-	std::vector<TestBase *> tests { &newTest, &allocatorTest/*, &freeListTest, &runtimeTest1, &runtimeTest2*/};
+	std::vector<TestBase *> tests { &newTest, /*&allocatorTest, */&freeListTest, &runtimeTest1, &runtimeTest2, &templatedTest};
 
 	/*BestAllocator<elementCount>::TestType bestTest {"Best Allocator", elementCount};
 
