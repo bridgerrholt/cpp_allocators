@@ -7,8 +7,8 @@
 
 namespace {
 
-using namespace bridgerrholt::allocators;
-using namespace bridgerrholt::allocators::tests;
+using namespace brh::allocators;
+using namespace brh::allocators::tests;
 
 	namespace stack_instructions {
 
@@ -302,7 +302,7 @@ class GeneratorInstance
 }
 
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

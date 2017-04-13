@@ -1,9 +1,9 @@
-#ifndef BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_GENERATOR_FLAGS_H
-#define BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_GENERATOR_FLAGS_H
+#ifndef BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_GENERATOR_FLAGS_H
+#define BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_GENERATOR_FLAGS_H
 
 #include "bit_flags.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

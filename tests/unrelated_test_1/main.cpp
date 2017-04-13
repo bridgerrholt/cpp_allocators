@@ -53,7 +53,7 @@ void printMeta(T & t) {
 }
 
 template <class T>
-bridgerrholt::allocators::RawBlock
+brh::allocators::RawBlock
 allocatePrint(T & t, std::size_t blockCount) {
 	auto toReturn = t.allocateBlocks(blockCount);
 	printMeta(t);
@@ -61,7 +61,7 @@ allocatePrint(T & t, std::size_t blockCount) {
 }
 
 template <class T>
-void deallocatePrint(T & t, bridgerrholt::allocators::RawBlock block) {
+void deallocatePrint(T & t, brh::allocators::RawBlock block) {
 	t.deallocate(block);
 	printMeta(t);
 }
@@ -70,7 +70,7 @@ void deallocatePrint(T & t, bridgerrholt::allocators::RawBlock block) {
 
 int main(int argc, char* argv[])
 {
-	using namespace bridgerrholt::allocators;
+	using namespace brh::allocators;
 
 	using Type = int;
 	using CoreAllocator = StackAllocator::Templated<VectorArray, 256>;

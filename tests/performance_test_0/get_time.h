@@ -1,9 +1,9 @@
-#ifndef BRIDGERRHOLT_GET_TIME_H
-#define BRIDGERRHOLT_GET_TIME_H
+#ifndef BRH_GET_TIME_H
+#define BRH_GET_TIME_H
 
 #include <chrono>
 
-namespace bridgerrholt {
+namespace brh {
 
 template <class T = std::chrono::microseconds>
 std::ptrdiff_t getTime() {

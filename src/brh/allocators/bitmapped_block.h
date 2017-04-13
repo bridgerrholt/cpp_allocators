@@ -1,5 +1,5 @@
-#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BITMAPPED_BLOCK_H
-#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BITMAPPED_BLOCK_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_BITMAPPED_BLOCK_H
+#define BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_BITMAPPED_BLOCK_H
 
 #define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_ALLOCATION
 #define BRH_CPP_ALLOCATORS_BITMAPPED_BLOCK_NEXT_BYTE_DEALLOCATION
@@ -19,15 +19,16 @@
 #include <cassert>
 #include <functional>
 
+#include <supports/round_up_to_multiple.h>
+#include <supports/calc_lcm.h>
+
 #include "traits/traits.h"
 #include "common/common_types.h"
 #include "wrappers/allocator_wrapper.h"
-#include "common/round_up_to_multiple.h"
-#include "common/calc_lcm.h"
 
 #include "multithread/thread.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace bitmapped_block {
 
@@ -127,7 +128,7 @@ Allocator : private t_Policy {
 				return getAttributes().getBlockSize();
 			}
 			else {
-				return common::roundUpToMultiple(
+				return supports::roundUpToMultiple(
 					desiredSize, getAttributes().getBlockSize()
 				);
 			}
@@ -202,7 +203,7 @@ Allocator : private t_Policy {
 			allocationSetup(size, blocksRequired);
 
 
-			auto lcm = common::calcLcm(
+			auto lcm = supports::calcLcm(
 				getAttributes().getBlockSize(), alignment
 			);
 
@@ -488,7 +489,7 @@ Allocator : private t_Policy {
 		                SizeType   step) const {
 			SizeType oldIndex {index};
 
-			index = startIndex + common::roundUpToMultiple(
+			index = startIndex + supports::roundUpToMultiple(
 				oldIndex - startIndex, step
 			);
 
@@ -757,9 +758,9 @@ class Attributes {
 		/// Primary constructor.
 		constexpr Attributes(SizeType minimumBlockSize,
                          SizeType minimumBlockCount) :
-			blockSize_    {common::roundUpToMultiple(minimumBlockSize,
+			blockSize_    {supports::roundUpToMultiple(minimumBlockSize,
 			                                         alignment)},
-			blockCount_   {common::roundUpToMultiple(minimumBlockCount,
+			blockCount_   {supports::roundUpToMultiple(minimumBlockCount,
 			                                         arrayElementSizeBits)},
 			metaDataSize_ {calcMetaDataSize()} {}
 
@@ -775,7 +776,7 @@ class Attributes {
 
 		/// Calculates the total amount of elements required for the array.
 		constexpr SizeType getElementCount() const {
-			return common::roundUpToMultiple(
+			return supports::roundUpToMultiple(
 				getTotalSize(), arrayElementSize_
 			) / arrayElementSize_;
 		}
@@ -792,7 +793,7 @@ class Attributes {
 			// TODO: Remove this, it is now useless because blockCount_
 			//       is already rounded up in the constructor.
 			SizeType toReturn {
-				common::roundUpToMultiple(blockCount_, elementSizeBits_)
+				supports::roundUpToMultiple(blockCount_, elementSizeBits_)
 			};
 
 			// Meta data overhead is 1 bit per block.
@@ -800,7 +801,7 @@ class Attributes {
 
 			// The meta data size must be a multiple of the alignment so that
 			// the storage is also aligned.
-			toReturn = common::roundUpToMultiple(toReturn, alignment);
+			toReturn = supports::roundUpToMultiple(toReturn, alignment);
 
 			return toReturn;
 		}

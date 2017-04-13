@@ -1,5 +1,5 @@
-#ifndef BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_GENERATE_INSTRUCTIONS_H
-#define BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_GENERATE_INSTRUCTIONS_H
+#ifndef BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_GENERATE_INSTRUCTIONS_H
+#define BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_GENERATE_INSTRUCTIONS_H
 
 #include <iostream>
 
@@ -13,7 +13,7 @@
 #include "allocator_policy.h"
 #include "bit_flags.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

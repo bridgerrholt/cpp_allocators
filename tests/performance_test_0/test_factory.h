@@ -6,7 +6,7 @@
 #include <memory>
 #include <tuple>
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

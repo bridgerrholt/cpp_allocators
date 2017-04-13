@@ -61,7 +61,7 @@ class B : public Base
 
 
 int main() {
-	using namespace bridgerrholt::allocators;
+	using namespace brh::allocators;
 
 	using Type = A;
 	using TypeArray = std::array<A, 10>;

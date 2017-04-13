@@ -1,7 +1,7 @@
 #include "generate_instructions.h"
 
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

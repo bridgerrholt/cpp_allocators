@@ -1,10 +1,10 @@
-#ifndef BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_GENERATION_ARG_PACK_H
-#define BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_GENERATION_ARG_PACK_H
+#ifndef BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_GENERATION_ARG_PACK_H
+#define BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_GENERATION_ARG_PACK_H
 
 #include <cstddef>
 #include "allocator_policy.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

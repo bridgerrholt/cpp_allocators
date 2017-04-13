@@ -1,16 +1,17 @@
-#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FULL_FREE_LIST_H
-#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FULL_FREE_LIST_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_FULL_FREE_LIST_H
+#define BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_FULL_FREE_LIST_H
 
 #include <vector>
 #include <type_traits>
 
-#include "common/calc_is_aligned.h"
+#include <supports/calc_is_aligned.h>
+
 #include "common/common_types.h"
 #include "common/free_list_node.h"
 
 #include "multithread/thread.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace full_free_list {
 
@@ -110,7 +111,7 @@ Allocator : t_Policy
 		void * allocateAligned(SizeType alignment) {
 			auto nextSpot = static_cast<void*>(&root_.get());
 
-			if (bridgerrholt::common::calcIsAligned(nextSpot, alignment))
+			if (brh::supports::calcIsAligned(nextSpot, alignment))
 				return allocate();
 
 			else

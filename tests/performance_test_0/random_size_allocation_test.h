@@ -6,7 +6,7 @@
 #include "test_base.h"
 #include "get_time.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

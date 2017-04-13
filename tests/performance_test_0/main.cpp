@@ -21,7 +21,7 @@
 #include "test_factory.h"
 
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 
@@ -217,7 +217,7 @@ runTests(std::vector<TestBase *> tests, std::size_t iterations) {
 }
 
 
-using namespace bridgerrholt::allocators;
+using namespace brh::allocators;
 using namespace tests;
 
 template <std::size_t elementCount>

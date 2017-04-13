@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 option(use_tests "Whether tests should be used or not" ON)
 
-set(allocators_include "${CMAKE_SOURCE_DIR}/src/bridgerrholt")
+set(allocators_include "${CMAKE_SOURCE_DIR}/src/brh")
 
 #set(Boost_USE_STATIC_LIBS OFF)
 #set(Boost_USE_MULTITHREADED ON)
@@ -13,7 +13,11 @@ set(allocators_include "${CMAKE_SOURCE_DIR}/src/bridgerrholt")
 #find_package(Boost)
 
 #include_directories(${Boost_INCLUDE_DIRS} ${allocators_include})
-include_directories(${allocators_include})
+include_directories(${allocators_include} cpp_supports/src/brh)
+
+add_subdirectory(cpp_supports)
+
+link_libraries(brh_cpp_supports)
 
 set(brh_cpp_allocators_source_files)
 add_subdirectory(src)

@@ -3,7 +3,7 @@
 
 #include <vector>
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace traits {
 

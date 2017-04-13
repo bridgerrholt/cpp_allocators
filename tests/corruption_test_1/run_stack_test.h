@@ -1,9 +1,9 @@
-#ifndef BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_1_RUN_STACK_TEST_H
-#define BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_1_RUN_STACK_TEST_H
+#ifndef BRH_CPP_ALLOCATORS_CORRUPTION_TEST_1_RUN_STACK_TEST_H
+#define BRH_CPP_ALLOCATORS_CORRUPTION_TEST_1_RUN_STACK_TEST_H
 
 #include "../corruption_test_0/generation_arg_pack.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

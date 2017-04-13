@@ -5,7 +5,7 @@
 
 #include "../common/common_types.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace traits {
 

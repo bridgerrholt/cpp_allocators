@@ -1,7 +1,7 @@
-#ifndef BRIDGERRHOLT_BIT_FLAGS_H
-#define BRIDGERRHOLT_BIT_FLAGS_H
+#ifndef BRH_BIT_FLAGS_H
+#define BRH_BIT_FLAGS_H
 
-namespace bridgerrholt {
+namespace brh {
 
 template <class t_EnumType, class NumberType = int>
 class EnumWrapper

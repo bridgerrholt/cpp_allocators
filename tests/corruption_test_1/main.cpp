@@ -8,7 +8,7 @@
 
 int main(int argc, char* argv[])
 {
-	using namespace bridgerrholt::allocators;
+	using namespace brh::allocators;
 	using namespace tests;
 
 	constexpr std::size_t size {1024};

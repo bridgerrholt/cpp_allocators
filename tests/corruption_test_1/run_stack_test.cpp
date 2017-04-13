@@ -10,7 +10,7 @@
 
 namespace {
 
-using namespace bridgerrholt::allocators::tests;
+using namespace brh::allocators::tests;
 
 class Instance
 {
@@ -225,7 +225,7 @@ class Instance
 }
 
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

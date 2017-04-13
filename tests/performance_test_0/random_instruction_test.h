@@ -1,12 +1,12 @@
-#ifndef BRIDGERRHOLT_ALLOCATORS_PERFORMANCE_TEST_0_RANDOM_INSTRUCTION_TEST_H
-#define BRIDGERRHOLT_ALLOCATORS_PERFORMANCE_TEST_0_RANDOM_INSTRUCTION_TEST_H
+#ifndef BRH_CPP_ALLOCATORS_PERFORMANCE_TEST_0_RANDOM_INSTRUCTION_TEST_H
+#define BRH_CPP_ALLOCATORS_PERFORMANCE_TEST_0_RANDOM_INSTRUCTION_TEST_H
 
 #include <random>
 
 #include "test_base.h"
 #include "get_time.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

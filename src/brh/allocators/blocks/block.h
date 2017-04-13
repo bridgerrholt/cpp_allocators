@@ -1,5 +1,5 @@
-#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BLOCKS_BLOCK_H
-#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BLOCKS_BLOCK_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_BLOCKS_BLOCK_H
+#define BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_BLOCKS_BLOCK_H
 
 #include <type_traits>
 #include <utility>
@@ -7,7 +7,7 @@
 
 #include "../common/common_types.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 
 /// Contains the size in bytes. Does not contain a pointer.

@@ -1,6 +1,6 @@
 #include "instructions.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 			namespace instructions {

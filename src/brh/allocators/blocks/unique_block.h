@@ -1,12 +1,12 @@
-#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BLOCKS_UNIQUE_BLOCK_H
-#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_BLOCKS_UNIQUE_BLOCK_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_BLOCKS_UNIQUE_BLOCK_H
+#define BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_BLOCKS_UNIQUE_BLOCK_H
 
 #include <type_traits>
 
 #include "../common/common_types.h"
 #include "block.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 
 template <class T, class Allocator>

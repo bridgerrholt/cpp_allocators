@@ -1,5 +1,5 @@
-#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FREE_LIST_H
-#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FREE_LIST_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_FREE_LIST_H
+#define BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_FREE_LIST_H
 
 #include <vector>
 #include <bitset>
@@ -10,7 +10,7 @@
 
 #include "blocks/block.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 
 template <class Allocator, SizeType blockSize>

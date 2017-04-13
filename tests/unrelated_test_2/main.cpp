@@ -1,16 +1,16 @@
 #include <iostream>
 #include <array>
 
+#include <supports/calc_is_aligned.h>
+#include <supports/calc_lcm.h>
 #include <allocators/traits/array_interface.h>
 #include <allocators/traits/traits.h>
-#include <allocators/common/calc_is_aligned.h>
-#include <allocators/common/calc_lcm.h>
 #include <allocators/bitmapped_block.h>
 
 int main(int argc, char* argv[])
 {
-	using namespace bridgerrholt;
-	using namespace bridgerrholt::allocators;
+	using namespace brh;
+	using namespace brh::allocators;
 
 	using AllocatorType = BitmappedBlock::Templated<traits::VectorInterface::Templated, 16, 1024 * 16>;
 
@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 		std::cout << "allocateAligned(" << size << ", " << alignment << ")\n";
 		auto a = allocator.allocateAligned(size, alignment);
 		std::cout << a.getPtr() << '\n';
-		std::cout << "Aligned:   " << common::calcIsAligned(a.getPtr(), alignment) << '\n';
+		std::cout << "Aligned:   " << supports::calcIsAligned(a.getPtr(), alignment) << '\n';
 		std::cout << "Division:  " << reinterpret_cast<std::uintptr_t>(a.getPtr()) / alignment << '\n';
 		allocator.deallocate(a);
 		alignment *= factor;

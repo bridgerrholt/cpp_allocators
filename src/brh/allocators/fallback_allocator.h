@@ -1,11 +1,11 @@
-#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FALLBACK_ALLOCATOR_H
-#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_FALLBACK_ALLOCATOR_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_FALLBACK_ALLOCATOR_H
+#define BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_FALLBACK_ALLOCATOR_H
 
 #include "common/common_types.h"
 
 #include "blocks/block.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 
 template <class Primary, class Fallback>

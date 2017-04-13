@@ -6,9 +6,9 @@
 
 int main(int argc, char* argv[])
 {
-	using namespace bridgerrholt::allocators;
-	using namespace bridgerrholt::allocators::tests;
-	using namespace bridgerrholt::allocators::tests::instructions;
+	using namespace brh::allocators;
+	using namespace brh::allocators::tests;
+	using namespace brh::allocators::tests::instructions;
 
 
 	using Allocator = StackAllocator::Templated<std::array, 16>;

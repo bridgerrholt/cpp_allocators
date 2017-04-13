@@ -5,7 +5,7 @@
 
 #include <allocators/bitmapped_block.h>
 
-using namespace bridgerrholt::allocators;
+using namespace brh::allocators;
 
 using Type = long;
 

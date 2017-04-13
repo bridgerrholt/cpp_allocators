@@ -1,5 +1,5 @@
-#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_MALLOC_ALLOCATOR_H
-#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_MALLOC_ALLOCATOR_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_MALLOC_ALLOCATOR_H
+#define BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_MALLOC_ALLOCATOR_H
 
 #include <cstddef>
 #include <cstdlib>
@@ -7,7 +7,7 @@
 
 #include "blocks/block.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 
 /// A simple wrapper of the malloc family of functions.

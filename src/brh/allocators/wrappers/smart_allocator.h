@@ -1,12 +1,12 @@
-#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_WRAPPERS_SMART_ALLOCATOR_H
-#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_WRAPPERS_SMART_ALLOCATOR_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_WRAPPERS_SMART_ALLOCATOR_H
+#define BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_WRAPPERS_SMART_ALLOCATOR_H
 
 #include <memory>
 
 #include "allocator_wrapper.h"
 #include "../blocks/unique_block.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 
 template <class Allocator>

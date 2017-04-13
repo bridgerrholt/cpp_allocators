@@ -1,12 +1,12 @@
-#ifndef BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_ALLOCATOR_POLICY_H
-#define BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_ALLOCATOR_POLICY_H
+#ifndef BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_ALLOCATOR_POLICY_H
+#define BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_ALLOCATOR_POLICY_H
 
 #include <cstddef>
 #include <string>
 
 #include <allocators/blocks/block.h>
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

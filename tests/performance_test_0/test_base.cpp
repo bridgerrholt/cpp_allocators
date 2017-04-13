@@ -1,6 +1,6 @@
 #include "test_base.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

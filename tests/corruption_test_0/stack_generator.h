@@ -1,5 +1,5 @@
-#ifndef BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_STACK_GENERATOR_H
-#define BRIDGERRHOLT_ALLOCATORS_CORRUPTION_TEST_0_STACK_GENERATOR_H
+#ifndef BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_STACK_GENERATOR_H
+#define BRH_CPP_ALLOCATORS_CORRUPTION_TEST_0_STACK_GENERATOR_H
 
 #include <random>
 
@@ -7,7 +7,7 @@
 #include "generator_flags.h"
 #include "generation_arg_pack.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace tests {
 

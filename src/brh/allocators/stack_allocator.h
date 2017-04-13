@@ -1,12 +1,13 @@
-#ifndef BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_STACK_ALLOCATOR_H
-#define BRH_CPP_ALLOCATORS_SRC_BRIDGERRHOLT_ALLOCATORS_STACK_ALLOCATOR_H
+#ifndef BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_STACK_ALLOCATOR_H
+#define BRH_CPP_ALLOCATORS_SRC_BRH_ALLOCATORS_STACK_ALLOCATOR_H
+
+#include <supports/calc_is_aligned.h>
 
 #include "blocks/block.h"
-#include "common/calc_is_aligned.h"
 #include "common/common_types.h"
 #include "traits/traits.h"
 
-namespace bridgerrholt {
+namespace brh {
 	namespace allocators {
 		namespace stack_allocator {
 
@@ -49,7 +50,7 @@ class Allocator : private t_Policy
 		}
 
 		Handle allocateAligned(SizeType size, SizeType alignment) {
-			if (common::calcIsAligned(next_, alignment))
+			if (supports::calcIsAligned(next_, alignment))
 				return allocate(size);
 
 			else
