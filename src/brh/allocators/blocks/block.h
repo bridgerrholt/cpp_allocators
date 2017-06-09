@@ -10,7 +10,7 @@
 namespace brh {
 	namespace allocators {
 
-/// Contains the size in bytes. Does not contain a pointer.
+/*/// Contains the size in bytes. Does not contain a pointer.
 class BlockBase
 {
 	public:
@@ -37,7 +37,7 @@ class BlockBase
 
 	private:
 		SizeType size_;
-};
+};*/
 
 
 /// Contains only a pointer. Does not contain the size.
@@ -45,40 +45,127 @@ class BlockBase
 template <class T>
 class PtrBlockBase
 {
+	private:
+		using This = PtrBlockBase<T>;
+
 	public:
 		using Type           = T;
+		using DifferenceType = std::ptrdiff_t;
 		using Pointer        = Type       *;
 		using ConstPointer   = Type const *;
 
 		constexpr PtrBlockBase() : PtrBlockBase(nullptr) {}
-
 		constexpr PtrBlockBase(Pointer ptr) : ptr_ {ptr} {}
 
+		constexpr bool isNull()    const { return (ptr_ == nullptr); }
+		constexpr bool isNotNull() const { return !isNull(); }
 
-		constexpr bool isNull() const { return (ptr_ == nullptr); }
-
-		constexpr ConstPointer getPtr() const { return ptr_; }
-		constexpr Pointer      getPtr()       { return ptr_; }
+		constexpr Pointer getPtr() const { return ptr_; }
 
 		constexpr void setPtr(Pointer ptr) { ptr_ = ptr; }
 
+		constexpr Pointer operator->() const { return  ptr_; }
 
-		constexpr operator bool() const { return (getPtr() != nullptr); }
+		constexpr operator bool() const { return isNotNull(); }
 
-		constexpr friend bool operator==(PtrBlockBase const & first,
-		                                 PtrBlockBase const & second) {
-			return (first.getPtr() == second.getPtr());
+		template <class U>
+		constexpr operator PtrBlockBase<U>() const {
+			return {static_cast<typename PtrBlockBase<U>::Pointer>(ptr_)};
+		};
+
+		constexpr This & operator++() { ++ptr_; return *this; }
+		constexpr This & operator--() { --ptr_; return *this; }
+
+		constexpr This operator++(int) {
+			This temp {*this};
+			++(*this);
+			return temp;
 		}
 
-		constexpr friend bool operator!=(PtrBlockBase const & first,
-		                                 PtrBlockBase const & second) {
-			return !(first == second);
+		constexpr This operator--(int) {
+			This temp {*this};
+			--(*this);
+			return temp;
+		}
+
+		constexpr This operator+(DifferenceType n) const {
+			This temp {*this};
+			return temp += n;
+		}
+
+
+		constexpr This operator-(DifferenceType n) const {
+			This temp {*this};
+			return temp -= n;
+		}
+
+		constexpr This & operator+=(DifferenceType n) {
+			ptr_ += n;
+			return *this;
+		}
+
+		constexpr This & operator-=(DifferenceType n) {
+			return (*this) += -n;
 		}
 
 
 	private:
 		Pointer ptr_;
 };
+
+
+template <class T1, class T2>
+constexpr bool operator==(PtrBlockBase<T1> const & first,
+                          PtrBlockBase<T2> const & second) {
+	return (first.getPtr() ==
+		static_cast<typename PtrBlockBase<T1>::Pointer>(second.getPtr()));
+}
+
+template <class T1, class T2>
+constexpr bool operator!=(PtrBlockBase<T1> const & first,
+                          PtrBlockBase<T2> const & second) {
+	return !(first == second);
+}
+
+template <class T1, class T2>
+constexpr bool operator<(PtrBlockBase<T1> const & first,
+                         PtrBlockBase<T2> const & second) {
+	return (first.getPtr() <
+	        static_cast<typename PtrBlockBase<T1>::Pointer>(second.getPtr()));
+}
+
+template <class T1, class T2>
+constexpr bool operator>(PtrBlockBase<T1> const & first,
+                         PtrBlockBase<T2> const & second) {
+	return (first.getPtr() >
+	        static_cast<typename PtrBlockBase<T1>::Pointer>(second.getPtr()));
+}
+
+template <class T1, class T2>
+constexpr bool operator<=(PtrBlockBase<T1> const & first,
+                          PtrBlockBase<T2> const & second) {
+	return !(first > second);
+}
+
+template <class T1, class T2>
+constexpr bool operator>=(PtrBlockBase<T1> const & first,
+                          PtrBlockBase<T2> const & second) {
+	return !(first < second);
+}
+
+template <class T>
+constexpr PtrBlockBase<T> operator+(
+	typename PtrBlockBase<T>::DifferenceType n,
+	PtrBlockBase<T> const & block) {
+	return block + n;
+}
+
+template <class T>
+constexpr typename PtrBlockBase<T>::DifferenceType
+operator-(PtrBlockBase<T> const & first,
+          PtrBlockBase<T> const & second) {
+	return (first.getPtr() - second.getPtr());
+}
 
 
 /// Has features that do not work with void pointers,
@@ -94,30 +181,37 @@ class PtrBlock : public PtrBlockBase<T>
 		using Pointer        = typename BaseType::Pointer;
 		using ConstPointer   = typename BaseType::ConstPointer;
 
-		using Reference      = Type &;
+		using Reference      = Type       &;
 		using ConstReference = Type const &;
 
-		constexpr PtrBlock() : PtrBlock(nullptr) {}
-
+		constexpr PtrBlock()            : PtrBlock(nullptr) {}
 		constexpr PtrBlock(Pointer ptr) : BaseType(ptr) {}
 
 
-		Reference      operator*()       { return *BaseType::getPtr(); }
-		ConstReference operator*() const { return *BaseType::getPtr(); }
+		constexpr Reference operator* () const { return *toBase().operator->(); }
+		constexpr Pointer   operator->() const { return  toBase().operator->(); }
 
-		Reference      operator->()       { return *BaseType::getPtr(); }
-		ConstReference operator->() const { return *BaseType::getPtr(); }
-
-		constexpr friend bool operator==(PtrBlock const & first,
-		                                 PtrBlock const & second) {
-			return (static_cast<BaseType const &>(first) == second);
-		}
-
-		constexpr friend bool operator!=(PtrBlock const & first,
-		                                 PtrBlock const & second) {
-			return !(first == second);
-		}
+	private:
+		BaseType       & toBase()       { return *this; }
+		BaseType const & toBase() const { return *this; }
 };
+
+/*
+template <class T1, class T2>
+constexpr bool operator==(PtrBlock<T1> const & first,
+                          PtrBlock<T2> const & second) {
+	return (static_cast<PtrBlockBase<T1> const &>(first) ==
+		static_cast<PtrBlockBase<T1> const &>(
+			static_cast<PtrBlockBase<T2> const &>(second)));
+}
+
+template <class T, class U>
+constexpr bool operator!=(PtrBlock<T> const & first,
+                          PtrBlock<U> const & second) {
+	return !(first == second);
+};
+*/
+
 
 
 /// Specialization for void pointers, doesn't have all the features.
@@ -136,18 +230,15 @@ class PtrBlock<void> : public PtrBlockBase<void>
 
 		constexpr PtrBlock(Pointer ptr) : BaseType(ptr) {}
 
-		constexpr char * getCharPtr() {
+		constexpr char * getCharPtr() const {
 			return static_cast<char*>(getPtr());
-		}
-		constexpr char const * getCharPtr() const {
-			return static_cast<char const *>(getPtr());
 		}
 };
 
 
 
 template <class T>
-class BlockBaseTemplate : public BlockBase, public PtrBlock<T>
+class BlockBaseTemplate : public PtrBlock<T>
 {
 	private:
 		using PtrBase = PtrBlock<T>;
@@ -157,26 +248,37 @@ class BlockBaseTemplate : public BlockBase, public PtrBlock<T>
 		using Pointer        = typename PtrBase::Pointer;
 		using ConstPointer   = typename PtrBase::ConstPointer;
 
-		constexpr BlockBaseTemplate() : BlockBaseTemplate(nullptr, 0) {}
+		constexpr BlockBaseTemplate() :
+			BlockBaseTemplate(nullptr, 0) {}
 
 		constexpr BlockBaseTemplate(Pointer ptr, SizeType size) :
-			BlockBase (size),
-			PtrBase   (ptr) {}
+			PtrBase (ptr),
+			size_   {size} {}
 
-		friend bool operator==(BlockBaseTemplate const & first,
-		                       BlockBaseTemplate const & second) {
-			return (
-				static_cast<BlockBase const &>(first) == second &&
-				static_cast<PtrBase   const &>(first) == second
-			);
+
+		constexpr SizeType getSize() const { return size_; }
+
+		constexpr void setSize(SizeType size) {
+			size_ = size;
 		}
 
 		friend bool operator!=(BlockBaseTemplate const & first,
 		                       BlockBaseTemplate const & second) {
 			return !(first == second);
 		}
+
+	private:
+		SizeType size_;
 };
 
+template <class T1, class T2 = T1>
+constexpr bool operator==(BlockBaseTemplate<T1> const & first,
+                          BlockBaseTemplate<T2> const & second) {
+	return (
+		static_cast<PtrBlock<T1> const &>(first) == second &&
+		first.getSize() == second.getSize()
+	);
+}
 
 
 template <class T>
@@ -204,11 +306,7 @@ class BasicBlock : public BlockBaseTemplate<T>
 			BasicBlock(static_cast<Pointer>(block.getPtr()), block.getSize()) {}
 
 
-		constexpr Pointer getEnd() {
-			return (BaseType::getPtr() + getElementCount());
-		}
-
-		constexpr ConstPointer getEnd() const {
+		constexpr Pointer getEnd() const {
 			return (BaseType::getPtr() + getElementCount());
 		}
 
@@ -216,11 +314,8 @@ class BasicBlock : public BlockBaseTemplate<T>
 			return (BaseType::getSize() / sizeof(Type));
 		}
 
-		Reference      operator*()       { return *BaseType::getPtr(); }
-		ConstReference operator*() const { return *BaseType::getPtr(); }
-
-		Reference      operator->()       { return *BaseType::getPtr(); }
-		ConstReference operator->() const { return *BaseType::getPtr(); }
+		Reference operator* () { return *BaseType::getPtr(); }
+		Pointer   operator->() { return  BaseType::getPtr(); }
 };
 
 
@@ -247,23 +342,21 @@ class BasicBlock<void> : public BlockBaseTemplate<void>
 		BasicBlock(BasicBlock<C> block) :
 			BasicBlock {static_cast<Pointer>(block.getPtr()), block.getSize()} {}
 
-		constexpr Pointer getEnd() {
+		constexpr Pointer getEnd() const {
 			return getEndChar();
 		}
 
-		constexpr ConstPointer getEnd() const {
-			return getEndChar();
-		}
-
-		constexpr char * getEndChar() {
-			return (getCharPtr() + BaseType::getSize());
-		}
-
-		constexpr char const * getEndChar() const {
+		constexpr char * getEndChar() const {
 			return (getCharPtr() + BaseType::getSize());
 		}
 };
 
+/*template <class T>
+constexpr typename BasicBlock<T>::DifferenceType
+operator-(BasicBlock<T> const & first,
+          BasicBlock<T> const & second) {
+	return (static_cast<PtrBlock<T> const &>(first) - static_cast<PtrBlock<T> const &>(second));
+}*/
 
 class NullBlock
 {

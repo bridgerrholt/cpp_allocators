@@ -13,6 +13,9 @@ template <class Allocator>
 class AllocatorWrapper : public Allocator
 {
 	public:
+		template <class T>
+		using BlockType = BasicBlock<T>;
+
 		template <class ... ArgTypes>
 		AllocatorWrapper(ArgTypes ... args) : Allocator {std::forward(args)...} {}
 
@@ -20,14 +23,14 @@ class AllocatorWrapper : public Allocator
 		/// the passed arguments.
 		/// Raw arrays are not supported (use std::array instead).
 		template <class T, class ... ArgTypes>
-		BasicBlock<T> construct(ArgTypes ... args) {
+		BlockType<T> construct(ArgTypes ... args) {
 			RawBlock block = Allocator::allocate(sizeof(T));
 			T * ptr = new (block.getPtr()) T {std::forward<ArgTypes>(args)...};
 			return { ptr, block.getSize() };
 		}
 
 		template <class T>
-		void destruct(BasicBlock<T> block) {
+		void destruct(BlockType<T> block) {
 			block.getPtr()->~T();
 			Allocator::deallocate(block);
 		}
