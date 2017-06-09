@@ -15,7 +15,7 @@ set(allocators_include "${CMAKE_SOURCE_DIR}/src/brh")
 #include_directories(${Boost_INCLUDE_DIRS} ${allocators_include})
 include_directories(${allocators_include} cpp_supports/src/brh)
 
-add_subdirectory(cpp_supports)
+add_subdirectory("../cpp_supports" "${CMAKE_CURRENT_BINARY_DIR}/cpp_supports_build")
 
 link_libraries(brh_cpp_supports)
 
